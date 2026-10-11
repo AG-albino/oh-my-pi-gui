@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [0.9.19] - 2026-10-11
+
+### Changed
+
+- Bundled agent rebuilt from upstream through **v18.9.1** (monorepo `bfe63c0b`, ~1,100 commits since v18.8.6): configurable extra context files (`contextFiles.extra`, e.g. `AGENTS.local.md`), `retry.fallbackOn` to restrict model fallback to quota errors only or to non-quota errors, saved Codex/Claude rate-limit resets can be listed and redeemed (`omp usage reset`) with expiry warnings and background auto-redeem, structured async job metadata, and judge improvements including new OpenAI Decisions and Workers AI judges. Fixes that matter to the GUI include RPC sessions no longer keeping stale MCP tool lists after servers change, sessions no longer stuck busy when a retry-related session write fails, plugins installing from non-GitHub Git URLs, the first prompt keeping prompt-cache coverage while MCP servers start up, `grep` finding matches past the first 512 bytes of long lines, and snapcompaction no longer leaving too little context room.
+- **Settings page**: complete Simplified Chinese coverage — every visible setting label, description, group title and enum option now renders in Chinese (about 200 strings added), including the settings introduced by this upstream range.
+- **Settings page hides controls that only affect the terminal UI** and did nothing in the GUI: composer predictions, OSC 7501 program status, bare exit/bare slash commands, thinking-block expansion, subagent live preview, SVG figures and auto-graph tables.
+
 ## [0.9.18] - 2026-10-09
 
 ### Changed
