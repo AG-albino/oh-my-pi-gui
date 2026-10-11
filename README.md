@@ -6,7 +6,7 @@
 **让对话、代码与并行 Agent 工作尽在眼前。**
 
 <a href="https://github.com/nornzach/oh-my-pi-gui/releases"><img src="https://img.shields.io/github/v/release/nornzach/oh-my-pi-gui?style=flat&colorA=222222&colorB=3FB950" alt="Release"></a>
-<a href="https://github.com/nornzach/oh-my-pi-gui/releases"><img src="https://img.shields.io/github/downloads/nornzach/oh-my-pi-gui/v0.9.19/total?style=flat&colorA=222222&colorB=58A6FF" alt="Downloads"></a>
+<a href="https://github.com/nornzach/oh-my-pi-gui/releases"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fnornzach.github.io%2Foh-my-pi-gui%2Fdownloads.json&style=flat" alt="Downloads"></a>
 <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-BE185D?style=flat" alt="License: MIT"></a>
 <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-222222?style=flat" alt="Platform: macOS | Windows | Linux">
 <img src="https://img.shields.io/badge/Electron-35-47848F?style=flat&logo=electron&logoColor=white" alt="Electron">
