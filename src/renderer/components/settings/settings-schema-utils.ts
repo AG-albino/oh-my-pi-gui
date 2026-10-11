@@ -63,6 +63,22 @@ const TERMINAL_DISPLAY_SETTINGS = new Set([
 	"statusLine.leftSegments",
 	"statusLine.rightSegments",
 	"statusLine.segmentOptions",
+	// Predictions render as TUI composer ghost text and only interactive mode
+	// runs them; in the GUI the toggle would do nothing.
+	"composer.predictions",
+	// OSC 7501 status goes to the hosting terminal, which the GUI is not.
+	"terminal.programStatus",
+	// Consumed only by the TUI input controller; GUI submission goes through RPC.
+	"input.bareExitOnEmptySession",
+	"input.bareSlashCommands",
+	// Rendered only by TUI transcript widgets; the GUI renders its own
+	// thinking blocks and subagent rows.
+	"expandThinkingBlocks",
+	"display.subagentLivePreview",
+	// These invite the agent to emit terminal-graphics output (sixels/inline
+	// images and auto-drawn charts) that the GUI does not render.
+	"tui.renderSvg",
+	"tui.autoGraph",
 ]);
 
 export function isSettingSupportedInGui(entry: { path?: string; tuiOnly?: boolean }): boolean {

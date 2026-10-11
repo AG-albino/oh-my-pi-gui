@@ -172,6 +172,14 @@ describe("GUI settings visibility", () => {
 			"statusLine.leftSegments",
 			"statusLine.rightSegments",
 			"statusLine.segmentOptions",
+			"composer.predictions",
+			"terminal.programStatus",
+			"input.bareExitOnEmptySession",
+			"input.bareSlashCommands",
+			"expandThinkingBlocks",
+			"display.subagentLivePreview",
+			"tui.renderSvg",
+			"tui.autoGraph",
 		].map(path => entry({ path, tab: "terminal-display" }));
 		expect(unsupported.filter(item => isSettingVisibleInGui(item, {}))).toEqual([]);
 		const groups = buildSettingsNavGroups({

@@ -57,6 +57,11 @@ export const ZH_GROUP_TITLES: Record<string, string> = {
 	Extensions: "扩展",
 	Developer: "开发者",
 	Modes: "模式",
+	Composer: "输入框",
+	Sharpshooter: "Sharpshooter",
+	Skills: "技能",
+	"IDA Pro": "IDA Pro",
+	Stream: "直播",
 	Subagents: "子代理",
 	Isolation: "隔离",
 	"Commands & Skills": "命令与技能",
@@ -328,6 +333,7 @@ export const ZH_SETTINGS: Record<string, { label: string; description?: string }
 			'将模型角色、模型选择器（"provider/model-id"）或提供商通配符（"provider/*"）映射为有序回退选择器的 JSON 对象，例如 {"default":["openai/gpt-4o-mini"],"google-antigravity/*":["google/*","google-vertex/*"]}。面向模型的键在该模型/提供商激活时生效，与角色无关；"provider/*" 条目保留失败模型的 id 并更换提供商。带 id 前缀的通配符（"openrouter/google/*"）会为失败模型的裸 id 重新添加前缀（google-antigravity/gemini-x -> openrouter/google/gemini-x），用作键时仅匹配该提供商在该前缀下的 id。',
 	},
 	"retry.fallbackRevertPolicy": { label: "回退恢复策略", description: "回退之后何时返回主模型" },
+	"retry.fallbackOn": { label: "回退触发条件", description: "哪些失败请求可以切换到已配置的回退模型" },
 	"providers.anthropic.serverSideFallback": {
 		label: "Anthropic 服务端回退（Fable 5）",
 		description:
@@ -377,7 +383,7 @@ export const ZH_SETTINGS: Record<string, { label: string; description?: string }
 	"startup.changelogMode": { label: "启动更新日志", description: "选择更新说明以摘要、完整详情开始，或保持隐藏" },
 	"magicKeywords.enabled": {
 		label: "魔法关键词",
-		description: "为独立的 ultrathink、orchestrate 和 workflowz 关键词启用隐藏提示",
+		description: "为独立的 ultrathink、orchestrate、workflowz 和 jevify 关键词启用隐藏提示",
 	},
 	"magicKeywords.ultrathink": {
 		label: "Ultrathink 关键词",
@@ -390,6 +396,10 @@ export const ZH_SETTINGS: Record<string, { label: string; description?: string }
 	"magicKeywords.workflow": {
 		label: "Workflow 关键词",
 		description: "允许独立的 workflowz 附加其隐藏的 eval 工作流提示",
+	},
+	"magicKeywords.jevify": {
+		label: "Jevify 关键词",
+		description: "允许独立的 jevify 附加其隐藏的批量 judge 分类提示",
 	},
 	"completion.notify": { label: "完成通知", description: "Agent 完成一轮时通知" },
 	"error.notify": { label: "错误通知", description: "Agent 因错误停止时通知" },
@@ -442,6 +452,11 @@ export const ZH_SETTINGS: Record<string, { label: string; description?: string }
 		label: "额外工作区目录",
 		description:
 			"作为额外根目录加入每个会话的工作区目录（多根工作区）。可通过 /add-dir 和 /remove-dir 实时管理。路径相对于 cwd 解析，建议使用绝对路径。Agent 会被告知这些根目录存在，并可对它们 read/grep/glob。",
+	},
+	"contextFiles.extra": {
+		label: "额外上下文文件",
+		description:
+			'与 AGENTS.md 一同加载的额外指令文件名。使用文件名（而非路径）的 JSON 列表，例如 ["AGENTS.local.md"]；[] 表示不加载额外文件。新会话开始后生效。',
 	},
 	"contextPromotion.enabled": {
 		label: "自动提升上下文",
@@ -697,6 +712,11 @@ export const ZH_SETTINGS: Record<string, { label: string; description?: string }
 	"bash.patterns": {
 		label: "Bash 审批模式",
 		description: "有序的 bash 命令审批规则。每项含 match 和 approval 字段；仅支持 '*' 通配符。",
+	},
+	"bash.gitGuard": {
+		label: "Git 防护",
+		description:
+			"在 bash 工具中拒绝会丢弃或移动共享工作的 git 命令：stash、reset --hard 或重置到其他提交，以及在合并/变基冲突之外的 checkout/switch/restore",
 	},
 	"bashInterceptor.enabled": { label: "Bash 拦截器", description: "阻止已有专用工具的 shell 命令" },
 	"bash.direnv": {
@@ -1029,6 +1049,10 @@ export const ZH_SETTINGS: Record<string, { label: string; description?: string }
 	},
 	"tts.localModel": { label: "本地 TTS 模型", description: "本地 TTS 后端使用的端侧神经网络 TTS 模型（Kokoro-82M）" },
 	"tts.localVoice": { label: "本地 TTS 音色", description: "本地 TTS 后端使用的 Kokoro 音色（美式/英式，女声/男声）" },
+	"tts.localSpeed": {
+		label: "本地 TTS 语速",
+		description: "本地 TTS 后端（tts 工具、omp say）的语速。1 = 正常；限制在 0.5–2.5",
+	},
 	"speech.enabled": { label: "语音朗读", description: "助手输出在流式到达时通过扬声器朗读出来" },
 	"speech.mode": {
 		label: "语音朗读模式",
@@ -1040,6 +1064,7 @@ export const ZH_SETTINGS: Record<string, { label: string; description?: string }
 			"合成前用微型/smol 模型把助手输出改写为自然的口语文本（描述代码、去掉链接和 markdown）。失败时回退到机械式清理",
 	},
 	"speech.voice": { label: "语音朗读音色", description: "朗读助手输出时使用的 Kokoro 音色" },
+	"speech.speed": { label: "语音朗读语速", description: "朗读助手输出时的语速。1 = 正常；限制在 0.5–2.5" },
 	"providers.tinyModel": {
 		label: "微型模型",
 		description: "会话标题模型：默认在线（/models 中的 TINY 角色，否则为 @smol），或本地端侧模型",
@@ -1497,7 +1522,8 @@ export const ZH_SETTINGS: Record<string, { label: string; description?: string }
 	},
 	"collab.autoStart": {
 		label: "协作自动启动",
-		description: "off 仅在执行 /collab 时共享；view 自动托管并由注册表分发只读链接。",
+		description:
+			"off 仅在执行 /collab 时共享；view 自动托管并由注册表分发只读链接；control 自动托管并分发可操控会话的链接。",
 	},
 	"compaction.experimentalContextManagement": {
 		label: "基于笔记的上下文窗口（实验性）",
@@ -1596,5 +1622,192 @@ export const ZH_SETTINGS: Record<string, { label: string; description?: string }
 	"tui.vimModeDisplay": {
 		label: "Vim 模式指示",
 		description: "显示当前 Vim 模式（如 NORMAL / INSERT）。",
+	},
+
+	// ── 18.9.x 合并后补充 ──────────────────────────────────────────────────
+	// model / providers
+	"providers.anthropic.slowMode": {
+		label: "Anthropic 慢速模式",
+		description:
+			"Anthropic 订阅的低优先级通道：auto 时，Claude 订阅达到 5 小时上限且 Anthropic 提供该通道便自动切换；也可在 Anthropic 模型上用 /slow on|off 切换。",
+	},
+	"providers.openaiLiveSteering": {
+		label: "OpenAI 实时引导",
+		description:
+			"在 GPT-6 响应流式输出时，通过 Codex WebSocket 把此刻输入的消息直接送入该响应，而不必等到下一个工具边界。",
+	},
+	"providers.muse-code.storeResponses": {
+		label: "Muse Code 服务端存稿",
+		description:
+			"把 Muse Code 结果存储在 Meta 服务器上，连接中断的轮次可以恢复而非重跑；存储的运行会在 Meta 侧保留提示词和输出。",
+	},
+	"providers.cacheWarming": {
+		label: "缓存保温",
+		description: "在提示词缓存条目即将过期前，以单 token 输出预算重发上一次请求",
+	},
+	"claudeResets.autoRedeem": {
+		label: "Claude 重置自动兑换",
+		description:
+			"自动使用符合条件的 Claude Cedar 或 Juniper 重置额度。Cedar 仅用于其覆盖的限额；Juniper 只能恢复单独的 5 小时封锁。unset 在首次使用前询问（无提示界面时仅使用 5 分钟内过期的重置）；yes 不询问直接使用；no 禁用封锁恢复与过期打捞。",
+	},
+	"claudeResets.minBlockedMinutes": {
+		label: "Claude 自动兑换最小封锁时长",
+		description:
+			"仅当自然解封——已耗尽的受覆盖窗口中最晚的重置——距今至少此分钟数时才自动兑换；单独的 5 小时重置绝不会用于每周或按模型的封锁。",
+	},
+	"claudeResets.keepCredits": {
+		label: "Claude 自动兑换保留量",
+		description:
+			"至少保留此数量的 Claude 重置额度（0 表示最后一个符合条件的也可自动用掉）；保留量适用于提前打捞，但不适用于 5 分钟内过期的重置。",
+	},
+	"claudeResets.salvageHorizonHours": {
+		label: "Claude 重置打捞窗口",
+		description:
+			"启用自动兑换时，当服务器选择的 Cedar 重置将在此小时数内过期、且其覆盖窗口有可恢复的用量时提前用掉；0 禁用提前打捞。无论用量或保留量如何，5 分钟内过期的符合条件重置仍会被尝试；提供商限额要求仍然适用。",
+	},
+	"telemetry.otlpExportEnabled": {
+		label: "OTLP 遥测导出",
+		description: "允许 OMP 通过 OTEL_* 端点导出 trace、日志与指标；更改在下次启动时生效。",
+	},
+	// advisor
+	"advisor.reviewMode": {
+		label: "顾问审查模式",
+		description: "没有 WATCHDOG.yml 名单时的默认顾问节奏：turn 审查每个主轮次；agent-end 仅在最终产出时审查。",
+	},
+	"advisor.reviewInterval": {
+		label: "顾问审查间隔",
+		description:
+			"没有 WATCHDOG.yml 名单时的默认顾问节奏：每第 N 次符合条件的主更新审查一次；1 = 每次更新；跳过的更新随下一次计划的审查一并发送。",
+	},
+	"advisor.evictStaleResults": {
+		label: "清理顾问过期结果",
+		description: "每次审查前，用简短占位符替换顾问更早审查产生的 read/grep/glob 输出；最近一次审查保留。",
+	},
+	// context / files
+	"compaction.modelThresholds": {
+		label: "按模型的压缩阈值",
+		description:
+			"模型选择器（provider/model-id 或 provider/…* 前缀）到压缩阈值的映射；可用 token 数或百分比，覆盖全局阈值。",
+	},
+	"compaction.modelThresholdsEnabled": {
+		label: "启用按模型的压缩阈值",
+		description: "控制 compaction.modelThresholds 映射是否生效。",
+	},
+	"ttsr.judge": {
+		label: "判定规则（judge）",
+		description:
+			"让 judge 模型角色对每条 `question` 规则评判已完成的回复、推理与工具调用；判定为是则把该规则注入为警告。",
+	},
+	"edit.modelVariants": {
+		label: "按模型的编辑变体",
+		description:
+			"模型选择器模式到编辑工具变体（replace、patch、hashline、apply_patch、sloppy）的映射；首个匹配生效。",
+	},
+	// tools / tasks
+	"tools.artifactMaxBytes": {
+		label: "Artifact 文件上限（MB）",
+		description:
+			"为流式工具输出（bash、python、js eval）保存的 artifact 文件最大体积；超出时保留开头（最多 3 MB）与最新的末尾，中间以截断提示分隔。0 = 不限。",
+	},
+	"ratchet.enabled": {
+		label: "Ratchet",
+		description: "启用 ratchet eval/调优前奏；/ratchet 可为当前会话开启。",
+	},
+	"archive.enabled": {
+		label: "Archive（归档）",
+		description: "启用只读的 archive eval 前奏：提示词历史、最近项目、过往会话与回顾。",
+	},
+	"eval.autoProvision": {
+		label: "Eval 环境自动配置",
+		description: "首次安装时自动创建托管的 JavaScript eval 包环境。",
+	},
+	"worktree.onStart": {
+		label: "启动时建 Worktree",
+		description: "新的交互式会话是否在新的关联 worktree 中开始。",
+	},
+	"worktree.onExit": {
+		label: "退出时处理 Worktree",
+		description: "退出时如何处理 omp 启动以来（启动时或通过 /wt）创建的 worktree。",
+	},
+	"task.speculativeLaunch": {
+		label: "投机式任务启动",
+		description:
+			"批量子代理在其 tasks[] 项流式解析完成时立即启动，而不等待整个 task 调用结束；若最终调用校验失败、被阻止或参数变化，已启动的 agent 会被中止。需要 task 自动批准且没有扩展工具生命周期处理器。",
+	},
+	"task.completionProbe": {
+		label: "子代理完成度探测",
+		description:
+			"通过类似 /btw 的缓存旁路请求，询问运行中的子代理任务完成度：分别在 2、5、10、30 分钟后及此后每小时估算一次；估算值显示在 wait 与 task 视图中。仅交互式会话主 Agent 派生的子代理会被询问；print、RPC、ACP 与 SDK 运行从不探测。",
+	},
+	"task.agentCompactionThresholdOverrides": {
+		label: "按 agent 的压缩阈值覆盖",
+		description: "agent 名称到压缩阈值的映射；命中时覆盖 compaction.modelThresholds 与全局阈值。",
+	},
+	"task.agentAccountPools": {
+		label: "按 agent 的账号池",
+		description: "agent 名称到可用 OAuth 账号（按提供商列出身份键）的映射；限制该子代理只能使用列出的账号。",
+	},
+	"title.icons": {
+		label: "标题图标",
+		description: "新生成或 /rename 会话标题前添加的图标与短代码。",
+	},
+	"title.generator": {
+		label: "标题生成器",
+		description: "根据用户消息为未命名会话命名的方式。",
+	},
+	"skills.registryUrl": {
+		label: "技能注册表",
+		description: "`omp skill` 用于安装、搜索与发布技能的 Skillshare 注册表（https://host[:port]）。",
+	},
+	"browser.tern": {
+		label: "Tern 浏览器",
+		description:
+			"在 Tern 面板中把浏览器标签以画中画覆盖在 omp 面板上（原生 WebView），而非无头 Chromium；无可用 Tern 窗口时回退 Chromium。显式 app 选项、relay 与浏览器 CDP URL 优先；app.tern:false 可单独退出。可用 PI_BROWSER_TERN=0 或 =1 覆盖。",
+	},
+	"ida.enabled": {
+		label: "IDA Pro",
+		description: "用 IDA Pro（idalib）打开 read 读取的可执行文件并启用 ida 工具；未找到 IDA 安装时无效。",
+	},
+	"ida.python": {
+		label: "IDA Python",
+		description: "能导入 ida_domain 与 idapro 的 Python 解释器；留空自动检测。",
+	},
+	"ida.installDir": {
+		label: "IDA 安装目录",
+		description: "包含 libidalib 的目录，导出为 IDADIR；留空自动检测（$IDADIR、ida-config.json、标准安装路径）。",
+	},
+	"ida.maxOpen": {
+		label: "IDA 同时打开上限",
+		description:
+			"每个项目最多同时打开的 IDA 数据库数（omp ps 中的 omp.ida.* 守护进程）；再打开时保存并关闭最久未用的空闲库。",
+	},
+	"ida.idleCloseSec": {
+		label: "IDA 空闲关闭超时",
+		description: "空闲超过此秒数的 IDA 数据库将被保存并关闭（0 = 从不）；exec 命名空间在重新打开时重置。",
+	},
+	"mcp.startupTimeoutMs": {
+		label: "MCP 启动等待窗口",
+		description: "等待初始 MCP 工具发现的毫秒数；0 表示一直等到连接就绪。",
+	},
+	// advanced（无 ui 元数据，归入 Advanced 选项卡）
+	"auth.accountPolicies": {
+		label: "账号策略",
+		description: "按账号的认证路由与配额策略（JSON 数组），通常由 omp auth-gateway / usage 工作流写入。",
+	},
+	modelPresets: {
+		label: "模型预设",
+		description: "命名模型预设的映射；由 /modelpreset 命令与模型中心管理。",
+	},
+	"gc.stale": {
+		label: "GC 清理陈旧文件",
+		description: "`omp gc --apply` 时同时删除陈旧的用户可见文件（过期调试报告、协作副本、悬空标记等）；默认关闭。",
+	},
+	"gc.staleRetainNewest": {
+		label: "陈旧清理保留最新数",
+		description: "陈旧清理阶段始终保留的最新条目数（默认 20）。",
+	},
+	"gc.staleRetainDays": {
+		label: "陈旧清理保留天数",
+		description: "陈旧清理保留此天数内的条目（默认 30）。",
 	},
 };

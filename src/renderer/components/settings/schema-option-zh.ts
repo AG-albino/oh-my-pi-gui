@@ -814,4 +814,197 @@ export const ZH_SCHEMA_OPTION_TEXT: Readonly<Record<string, string>> = {
 	"Share only when /collab is run": "仅在执行 /collab 时共享",
 	"Auto-host; the registry hands out view-only links (omp collab link --view)":
 		"自动托管；注册表分发只读链接（omp collab link --view）",
+	"Any error": "任意错误",
+	"Every provider error may switch models": "任何提供商错误都可以切换模型",
+	"Usage limits only": "仅用量限制",
+	"Switch only on a usage limit; retry other errors on the same model, then surface them":
+		"仅在达到用量限制时切换；其他错误先在同一模型上重试，再报告出来",
+	"All but usage limits": "除用量限制外",
+	"Wait out or surface a usage limit; switch on other errors": "用量限制时等待或报告；其他错误时切换",
+	"1× (normal)": "1×（正常）",
+
+	// ── 18.9.x 合并后补充 ─────────────────────────────────────────────
+	// 压缩阈值（compaction.thresholdTokens）
+	"1/8 of a 200K window": "200K 窗口的八分之一",
+	"1/4 of a 200K window": "200K 窗口的四分之一",
+	"1/2 of a 200K window": "200K 窗口的一半",
+	"3/4 of a 200K window": "200K 窗口的四分之三",
+	// 提示词缓存保留与保温
+	"Provider default — Anthropic OAuth subscriber sessions default to 1h, API keys use 5m; PI_CACHE_RETENTION still applies":
+		"提供商默认值——Anthropic OAuth 订阅会话默认 1 小时，API 密钥为 5 分钟；仍遵循 PI_CACHE_RETENTION。",
+	"Cheapest cache writes; pair with cache warming to keep short entries alive while idle":
+		"缓存写入成本最低；搭配缓存保温可在空闲时维持短时效条目。",
+	"1h TTL where the provider supports it; pricier writes, only warmed during active runs":
+		"支持时保留 1 小时；写入费用更高，仅在运行期间保温。",
+	"Disable cache warming": "禁用缓存保温",
+	Idle: "空闲",
+	"Also refresh 5-minute entries between runs while the expected savings stay above the cost floor":
+		"当预期节省仍高于成本底线时，也在运行间隙刷新 5 分钟条目。",
+	Streaming: "流式",
+	"Protect expensive prefixes during long tool executions; stops when the agent settles":
+		"在长耗时工具执行期间保护高成本前缀；agent 收尾后停止。",
+	// 电源（macOS caffeinate 变体）
+	"Keep the system awake while a session is open (macOS `caffeinate -i`)":
+		"会话打开时保持系统唤醒（macOS `caffeinate -i`）",
+	"Also keep the display from idle-sleeping (macOS `caffeinate -i -d`)":
+		"同时阻止显示器空闲休眠（macOS `caffeinate -i -d`）",
+	"Also block all system sleep on AC and declare the user active (macOS `caffeinate -i -d -s -u`)":
+		"同时在接通电源时阻止所有系统休眠，并声明用户处于活动状态（macOS `caffeinate -i -d -s -u`）",
+	// Claude / Codex 重置自动兑换
+	"Check eligibility, then ask before spending the first saved reset. With no prompt UI, spend only a reset expiring within 5 minutes.":
+		"先检查资格，首次使用已存重置前询问；无提示界面时仅使用 5 分钟内过期的重置。",
+	"Check live eligibility, then ask before spending the first Claude reset. With no prompt UI, spend only a reset expiring within 5 minutes.":
+		"先检查实时资格，首次使用 Claude 重置前询问；无提示界面时仅使用 5 分钟内过期的重置。",
+	"Spend eligible Claude resets without prompting.": "不询问直接使用符合条件的 Claude 重置。",
+	"Do not run Claude reset auto-redeem checks.": "不运行 Claude 重置自动兑换检查。",
+	// 顾问节奏与笔记
+	"Every turn": "每轮",
+	"Review every primary update (tool-call round).": "审查每次主更新（工具调用轮次）。",
+	"Agent end": "Agent 结束时",
+	"Review only at final yields (once per run).": "仅在最终产出时审查（每次运行一次）。",
+	"Every eligible update": "每次符合条件的更新",
+	"Every 2nd": "每第 2 次",
+	"Every 3rd": "每第 3 次",
+	"Every 5th": "每第 5 次",
+	"Every 10th": "每第 10 次",
+	"0 steps": "0 步",
+	"1 step": "1 步",
+	"2 steps": "2 步",
+	"3 steps": "3 步",
+	"4 steps": "4 步",
+	"5 steps": "5 步",
+	"No cooldown.": "无冷却。",
+	strict: "严格",
+	"1 note": "1 条笔记",
+	"2 notes": "2 条笔记",
+	"3 notes": "3 条笔记",
+	"4 notes": "4 条笔记",
+	"5 notes": "5 条笔记",
+	"Anti-flood (strict).": "防刷屏（严格）。",
+	"Frontier reasoning models. Default.": "前沿推理模型。默认。",
+	"1 operation": "1 个操作",
+	"2 operations": "2 个操作",
+	"3 operations": "3 个操作",
+	"4 operations": "4 个操作",
+	// judge 相关
+	"Enable when the judge role resolves to a native TypeSafe jev model":
+		"当 judge 角色解析为原生 TypeSafe jev 模型时启用",
+	"Always enable, whichever model the judge role resolves to": "无论 judge 角色解析为哪个模型都启用",
+	"Judge only when the judge role resolves to a native TypeSafe jev model":
+		"仅当 judge 角色解析为原生 TypeSafe jev 模型时才判定",
+	"Always judge, whichever model the judge role resolves to": "无论 judge 角色解析为哪个模型都判定",
+	"Never judge; question rules stay inactive": "从不判定；question 规则保持停用",
+	// 意外停止检测
+	"Mechanical + small-model classification of text-only stops": "规则检测 + 小模型分类纯文本停止",
+	// worktree 启动/退出
+	Ask: "询问",
+	"Ask at session start": "会话开始时询问",
+	"Ask on exit": "退出时询问",
+	Create: "创建",
+	"Start in the current checkout": "在当前检出中开始",
+	"Always start in a new worktree on a `wt/*` branch": "始终在 `wt/*` 分支上的新 worktree 中开始",
+	Keep: "保留",
+	"Leave worktrees in place": "保留 worktree 原位不动",
+	Remove: "移除",
+	"Remove clean worktrees; ask when they have uncommitted changes or new commits. Gitignored files (e.g. `.env`) are deleted too":
+		"移除干净的 worktree；有未提交更改或新提交时询问。Gitignored 文件（如 `.env`）也会被删除。",
+	// 会话标题
+	Fork: "分叉",
+	"A side turn of the reply on the session's model: reads its prompt cache, adds the card icon (default)":
+		"在会话模型上对回复做一次旁支：读取其提示词缓存，并添加卡片图标（默认）。",
+	Tiny: "Tiny 模型",
+	"The title model role only; plain titles without a card": "仅标题模型角色；无卡片的纯标题。",
+	Boring: "纯文本",
+	"Plain title: no icon or code": "纯标题：无图标或短代码。",
+	"Always the emoji": "始终使用 emoji",
+	"Nerd Font glyph where the Nerd Font symbol preset renders it, else the emoji (default)":
+		"Nerd Font 符号预设可渲染时使用其字形，否则使用 emoji（默认）。",
+	// 自动绘图（tui.autoGraph）
+	"Leave tables as tables": "表格保持原样",
+	"Chart every table that reads as numeric, using the built-in best guess":
+		"为每个可识别为数值的表格绘图，使用内置的最佳猜测。",
+	"The judge model refines each chart: kind, columns, row names and grouping, scales, which way is better, and its title":
+		"judge 模型优化每个图表：类型、列、行名与分组、刻度、哪个方向为优及其标题。",
+	// 固定代理列表 / 协作 / 任务委派
+	"Always list every live agent": "始终列出所有活动代理",
+	Control: "控制",
+	"Auto-host; the registry hands out control links that can prompt the session":
+		"自动托管；注册表会分发可向会话发起提示的控制链接。",
+	"Uses the selected model's policy; some models require an explicit delegation request":
+		"使用所选模型的策略；部分模型要求显式的委派请求。",
+	// 服务等级
+	Ultrafast: "超快",
+	"Ultrafast serving (OpenAI family, where available)": "Ultrafast 服务（OpenAI 系列，可用时）。",
+	"Lowest-latency serving; OpenAI API preview access, or Codex models that advertise it":
+		"最低延迟服务；OpenAI API 预览权限，或声明支持它的 Codex 模型。",
+	// 压缩方法
+	"Server compaction": "服务端压缩",
+	"Use provider-native server compaction (OpenAI Responses compact, Anthropic compaction beta) when the active route supports it":
+		"当前路由支持时使用提供商原生服务端压缩（OpenAI Responses compact、Anthropic compaction beta）。",
+	// 抓取提供商
+	"Priority: native > trafilatura > lynx > parallel > firecrawl > jina":
+		"优先级：native > trafilatura > lynx > parallel > firecrawl > jina",
+	"Requires FIRECRAWL_API_KEY": "需要 FIRECRAWL_API_KEY",
+	// 本地微型模型设备
+	"Alias for MLX": "MLX 的别名",
+	"Apple silicon GPU via mlx-lm (Python subprocess; macOS arm64)":
+		"通过 mlx-lm 使用 Apple Silicon GPU（Python 子进程；macOS arm64）",
+	// 工具输出 artifact
+	"Save the complete output": "保存完整输出",
+	// 图片 URL 后端类别
+	"anonymous-host": "匿名托管",
+	"cloud-files": "云盘",
+	"external-command": "外部命令",
+	"file-host": "文件托管",
+	"file-transfer": "文件传输",
+	filesystem: "文件系统",
+	"image-host": "图床",
+	"local-serving": "本地直链",
+	messaging: "即时通讯",
+	"object-storage": "对象存储",
+	pomf: "Pomf 类托管",
+	s3: "S3 兼容存储",
+	"self-hosted": "自托管",
+	tunnel: "隧道",
+	webdav: "WebDAV",
+	// 图片 URL 后端说明
+	"Configure either native B2 application keys or S3-compatible access keys.":
+		"配置原生 B2 应用密钥或 S3 兼容访问密钥。",
+	"Public uploads are temporary.": "公开上传是临时的。",
+	"Public uploads expire after a retention window determined by file size.":
+		"公开上传在按文件大小决定的保留期后过期。",
+	"Public uploads expire after approximately three hours.": "公开上传约三小时后过期。",
+	"Uploads are temporary.": "上传是临时的。",
+	"Uploads require either an Imgur access token or client ID.": "上传需要 Imgur access token 或 client ID。",
+	"The API requires a paid subscription.": "该 API 需要付费订阅。",
+	"The devtunnel CLI must be logged in locally.": "devtunnel CLI 必须在本地登录。",
+	"The local zrok environment must be enabled.": "本地 zrok 环境必须已启用。",
+	"The defunct public endpoint is blocked; a self-hosted replacement is required.":
+		"已停止服务的公共端点被阻止；需要自托管替代。",
+	"The public API is deprecated; a replacement endpoint is required.": "公共 API 已弃用；需要替代端点。",
+	"The public discovery API is deprecated; a replacement endpoint is required.": "公共发现 API 已弃用；需要替代端点。",
+	"The public service is defunct; a replacement endpoint is required.": "公共服务已停止运行；需要替代端点。",
+	"The public service is offline; a replacement endpoint is required.": "公共服务离线；需要替代端点。",
+	"Provider file references are API-local rather than public image URLs.":
+		"提供商文件引用是 API 内部引用，而非公开图片 URL。",
+	// 图片 URL 后端名称（含描述性文字的品牌名）
+	"Direct public URL": "公开直连 URL",
+	"Shared folder": "共享文件夹",
+	"Uploader command": "自定义上传命令",
+	"Model provider files": "提供商文件",
+	"Cloudflare quick tunnel": "Cloudflare 快速隧道",
+	"Named Cloudflare Tunnel": "命名 Cloudflare Tunnel",
+	"Microsoft dev tunnel": "Microsoft 开发隧道",
+	"SSH reverse tunnel": "SSH 反向隧道",
+	"Hostr-compatible endpoint": "Hostr 兼容端点",
+	"Lambda-compatible endpoint": "Lambda 兼容端点",
+	"LobFile-compatible endpoint": "LobFile 兼容端点",
+	"MediaFire-compatible endpoint": "MediaFire 兼容端点",
+	"puush-compatible endpoint": "puush 兼容端点",
+	"SendSpace-compatible endpoint": "SendSpace 兼容端点",
+	"transfer.sh-compatible endpoint": "transfer.sh 兼容端点",
+	// find 工具
+	"Disable the find tool": "禁用 find 工具",
+	"Retry stops with no visible assistant message; tool calls are excluded (default)":
+		"重试没有可见助手消息的停止；不含工具调用（默认）。",
 };
