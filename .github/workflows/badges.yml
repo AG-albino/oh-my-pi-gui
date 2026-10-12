@@ -14,6 +14,9 @@ on:
 
 permissions:
   contents: write
+  # Bot pushes never trigger other workflows, so pages.yml would not deploy the
+  # refreshed JSON on its own — we dispatch it explicitly after committing.
+  actions: write
 
 jobs:
   refresh:
@@ -30,7 +33,9 @@ jobs:
             '{schemaVersion:1,label:"downloads",labelColor:"222222",message:$m,color:"58A6FF"}' \
             > site/downloads.json
           cat site/downloads.json
-      - name: Commit if the count moved
+      - name: Commit if the count moved, then redeploy Pages
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if git status --porcelain -- site/downloads.json | grep -q .; then
             git add site/downloads.json
@@ -38,6 +43,7 @@ jobs:
               -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
               commit -m "chore(badges): refresh download count"
             git push
+            gh workflow run pages.yml
           else
             echo "count unchanged"
           fi
