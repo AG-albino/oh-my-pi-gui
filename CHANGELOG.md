@@ -1,8 +1,10 @@
 # Changelog
 
-## [Unreleased]
+## [0.9.20] - 2026-10-12
 
 ### Changed
+
+- Bundled agent rebuilt from upstream through **v18.10.1** (monorepo `c0b153d8`): codex gpt-6.1-sol default window raised to 500k, running agents and jobs merged into one status counter, model catalog refresh, and assorted fixes.
 
 - **No more tab limit**: open as many tabs and windows as you like — the old 10-tab ceiling is gone, a restored session brings back every tab, and a restored tab only starts its process when you open it.
 - **Background tabs speak up**: when a run finishes in a tab you are not looking at you get a short "“…” finished" notice, and a failure shows its error; desktop notifications follow the same completion/error settings as the visible tab. A tab retrying after a provider error shows an amber dot, a failed one a red dot until you open it.
@@ -37,6 +39,7 @@
 - The welcome screen no longer clips under the tab strip in windows around 720–820px tall, and an empty composer in a narrow split pane no longer shows a scrollbar.
 - Working-tree diffs no longer show git's `index …` header line as part of the file.
 - Working-tree diffs now load for projects opened through a symlinked folder (such as `/tmp` on macOS); every file used to fail with "File resolves outside this checkout".
+- Slash-command completion accepts digits and `:` in the query, so `/p4` finds `skill:p4-case-rename` (and argument completion works for digit-named commands) instead of never opening.
 
 ## [0.9.19] - 2026-10-11
 
