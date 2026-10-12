@@ -15,6 +15,16 @@ export const MAX_MENTION_FILE_ITEMS = 20;
 /** Internal URL schemes always offered in the @ menu, below file results. */
 export const MENTION_SCHEMES = ["skill://", "memory://", "artifact://", "issue://", "pr://", "local://plan.md"];
 
+/**
+ * Slash-command query at buffer end. TUI parity (`autocomplete.ts` uses
+ * `[^\s/]*`): the name token accepts any non-space, non-slash chars — digits
+ * (`p4-case-rename`) and `:` (namespaced names like `skill:p4-case-rename`)
+ * included. Anything narrower silently disables the menu.
+ */
+export const SLASH_NAME_RE = /(^|\s)\/([^\s/]*)$/;
+/** `/cmd <args>` with the slash at buffer start; same token charset. */
+export const SLASH_ARG_RE = /^\/([^\s/]+)\s(.+)$/;
+
 /** Subsequence fuzzy score; null = no match. Earlier + denser wins. */
 export function fuzzyScore(query: string, target: string): number | null {
 	const q = query.toLowerCase();

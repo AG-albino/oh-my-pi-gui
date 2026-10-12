@@ -6,6 +6,7 @@
  * apply a stale menu once the caret has moved away from rangeEnd.
  */
 import { describe, expect, it } from "vitest";
+import { SLASH_ARG_RE, SLASH_NAME_RE } from "./input-area-utils";
 import { applyCompletion, type CompletionItem, type CompletionMenu } from "./use-completion-menu";
 
 function menu(rangeStart: number, rangeEnd: number): CompletionMenu {
@@ -27,5 +28,26 @@ describe("applyCompletion", () => {
 
 	it("refuses to apply a stale menu once the caret moved off rangeEnd", () => {
 		expect(applyCompletion("review ^cl", 9, menu(7, 10), item)).toBeNull();
+	});
+});
+
+describe("slash regexes", () => {
+	// Issue #15: an [a-z-] name charset never matched a query containing a
+	// digit, so "/p4" produced no menu while "/case" did.
+	it("matches name queries containing digits", () => {
+		expect(SLASH_NAME_RE.exec("/p4")?.[2]).toBe("p4");
+	});
+	it("matches namespaced skill names containing ':'", () => {
+		expect(SLASH_NAME_RE.exec("/skill:p4-case")?.[2]).toBe("skill:p4-case");
+	});
+	it("matches plain names after a word boundary", () => {
+		expect(SLASH_NAME_RE.exec("run /case")?.[2]).toBe("case");
+	});
+	it("does not match a slash mid-token", () => {
+		expect(SLASH_NAME_RE.exec("a/b")).toBeNull();
+	});
+	it("splits digit-named commands into name + arg prefix", () => {
+		const m = SLASH_ARG_RE.exec("/p4-case-rename foo");
+		expect([m?.[1], m?.[2]]).toEqual(["p4-case-rename", "foo"]);
 	});
 });

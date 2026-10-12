@@ -14,7 +14,14 @@ import { getEmojiSuggestions } from "../../lib/emoji";
 import { useT } from "../../lib/i18n";
 import { useTabRpc } from "../../lib/tab-rpc";
 import { useModelStore } from "../../stores/model";
-import { fuzzyScore, MAX_MENTION_FILE_ITEMS, MAX_MENU_ITEMS, MENTION_SCHEMES } from "./input-area-utils";
+import {
+	fuzzyScore,
+	MAX_MENTION_FILE_ITEMS,
+	MAX_MENU_ITEMS,
+	MENTION_SCHEMES,
+	SLASH_ARG_RE,
+	SLASH_NAME_RE,
+} from "./input-area-utils";
 
 export interface CompletionItem {
 	value: string;
@@ -101,7 +108,7 @@ export function useCompletionMenu({
 		}
 
 		// 1. Slash-command ARGUMENTS: "/cmd <args>" with the slash at buffer start.
-		const argMatch = /^\/([a-z-]+)\s(.+)$/i.exec(before);
+		const argMatch = SLASH_ARG_RE.exec(before);
 		if (argMatch) {
 			const name = (argMatch[1] ?? "").toLowerCase();
 			const command = commands.find(
@@ -190,7 +197,7 @@ export function useCompletionMenu({
 		}
 
 		// 3. Slash command NAMES at a word boundary.
-		const cmdMatch = /(^|\s)\/([a-z-]*)$/i.exec(before);
+		const cmdMatch = SLASH_NAME_RE.exec(before);
 		if (cmdMatch) {
 			const query = (cmdMatch[2] ?? "").toLowerCase();
 			const items = commands
