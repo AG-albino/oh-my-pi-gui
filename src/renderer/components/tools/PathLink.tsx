@@ -11,7 +11,18 @@ import { toast } from "../../stores/toast";
  * toast. Events stop at the link so a surrounding disclosure row does not
  * toggle when the user meant to open the file.
  */
-export function PathLink({ path, children, className }: { path: string; children?: ReactNode; className?: string }) {
+export function PathLink({
+	path,
+	children,
+	className,
+	label,
+}: {
+	path: string;
+	children?: ReactNode;
+	className?: string;
+	/** Accessible name + tooltip for icon-only links; defaults to the path. */
+	label?: string;
+}) {
 	const t = useT();
 	if (!path) return <span className={className}>{children}</span>;
 
@@ -33,7 +44,8 @@ export function PathLink({ path, children, className }: { path: string; children
 	return (
 		<button
 			type="button"
-			title={path}
+			title={label ?? path}
+			aria-label={label}
 			onClick={event => {
 				event.stopPropagation();
 				void open();

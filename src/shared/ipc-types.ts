@@ -21,9 +21,9 @@ import type {
 	ImageContent,
 	ModelCatalogUpdateFrame,
 	PromptResultFrame,
+	RpcBtwFrame,
 	RpcCommand,
 	RpcDebugParams,
-	RpcBtwFrame,
 	RpcLiveFrame,
 	RpcMcpServerInput,
 	RpcResponse,
@@ -762,6 +762,21 @@ export interface IpcTabInfo {
 	sessionId?: string;
 	/** Null explicitly clears the previous session's cached title. */
 	title?: string | null;
+	/** Run outcome a background chip shows: auto-retry in flight, or the last run failed. Null clears it. */
+	attention?: "retrying" | "failed" | null;
+	/** Provider error behind `attention: "failed"`. */
+	attentionDetail?: string;
+	/** The auto-retry in flight (null clears), so a tab shown mid-saga can render it. */
+	retry?: IpcTabRetry | null;
+}
+
+/** One auto-retry wait, as the agent announced it; `startedAt` is main's clock. */
+export interface IpcTabRetry {
+	attempt: number;
+	maxAttempts: number;
+	delayMs: number;
+	errorMessage: string;
+	startedAt: number;
 }
 
 /** TAB_STATUS push payload — a full tab snapshot from any tab, active or background. */

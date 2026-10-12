@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 
 /**
  * Duration of every overlay exit animation. The closing classes animate at
- * `--omp-motion-instant` (70ms); unmount waits one frame past that so the last
+ * `--omp-motion-fast` (140ms); unmount waits one frame past that so the last
  * painted frame of the exit is the frame the element disappears on.
  */
-export const OVERLAY_EXIT_MS = 90;
+export const OVERLAY_EXIT_MS = 160;
 
 /** True when the OS asks for reduced motion; exit phases are skipped then. */
 export function prefersReducedMotion(): boolean {

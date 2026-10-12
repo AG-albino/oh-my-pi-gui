@@ -19,6 +19,7 @@ import { HotkeysDialog } from "./components/dialogs/HotkeysDialog";
 import { ImportForeignDialog } from "./components/dialogs/ImportForeignDialog";
 import { JobsDialog } from "./components/dialogs/JobsDialog";
 import { LiveVoiceDialog } from "./components/dialogs/LiveVoiceDialog";
+import { LogsDialog } from "./components/dialogs/LogsDialog";
 import { ModelPicker } from "./components/dialogs/ModelPicker";
 import { ModelRestoreDialog } from "./components/dialogs/ModelRestoreDialog";
 import { PlanApprovalDialog } from "./components/dialogs/PlanApprovalDialog";
@@ -260,7 +261,7 @@ export function App() {
 				if (
 					!changedPreferences.has("panelTab") &&
 					typeof prefs.defaultPanelTab === "string" &&
-					["diff", "files", "logs"].includes(prefs.defaultPanelTab)
+					["diff", "files"].includes(prefs.defaultPanelTab)
 				) {
 					useUiStore.setState({ panelTab: prefs.defaultPanelTab as PanelTab });
 				}
@@ -754,6 +755,7 @@ export function App() {
 			<BtwDialog />
 			<CollabDialog />
 			<DebugConsoleDialog />
+			<LogsDialog />
 			<LiveVoiceDialog />
 			<CopySelectorDialog />
 			<ContextReportDialog />

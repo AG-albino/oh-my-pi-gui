@@ -1398,6 +1398,13 @@ export function buildCommandMenu(ctx: CommandRegistryContext): CommandMenuItem[]
 		affordance: { kind: "window", open: () => useUiStore.getState().openDebug() },
 	});
 	add({
+		name: "logs",
+		label: t("cmd.logs"),
+		description: t("cmd.logs.desc"),
+		category: "other",
+		affordance: { kind: "window", open: () => useUiStore.getState().openLogs() },
+	});
+	add({
 		name: "live",
 		label: t("cmd.live"),
 		description: t("cmd.live.desc"),

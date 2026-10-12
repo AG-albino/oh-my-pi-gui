@@ -61,7 +61,7 @@ function Toggle({
 		<button
 			aria-checked={checked}
 			aria-label={label}
-			className={`relative h-[18px] w-8 shrink-0 rounded-full transition-colors duration-150 ${
+			className={`omp-switch-track relative h-5 w-9 shrink-0 rounded-full ${
 				checked ? "bg-(--omp-switch-on)" : "bg-(--omp-switch-off)" // surface-ok: toggle switch track fill
 			}`}
 			disabled={disabled}
@@ -74,8 +74,8 @@ function Toggle({
 		>
 			<span
 				aria-hidden="true"
-				className={`absolute top-0.5 size-3.5 rounded-full bg-white shadow-sm transition-[left] duration-150 ${
-					checked ? "left-4" : "left-0.5"
+				className={`omp-switch-thumb absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow-sm ${
+					checked ? "translate-x-4" : "translate-x-0"
 				}`}
 			/>
 		</button>
@@ -564,7 +564,7 @@ export function SkillsSettingsPage({ query }: { query: string }) {
 							</div>
 
 							<div className="flex min-h-48 flex-1 flex-col">
-								<h4 className="mb-2 text-omp-xs font-semibold uppercase tracking-[0.12em] text-(--omp-dim)">
+								<h4 className="mb-2 text-omp-xs font-semibold text-(--omp-dim)">
 									{t("settings.skills.preview")}
 								</h4>
 								{detailLoading ? (

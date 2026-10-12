@@ -1,4 +1,4 @@
-import { Diff, FolderTree, ScrollText, X } from "lucide-react";
+import { Diff, FolderTree, X } from "lucide-react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useActiveTabRouteReady } from "../../hooks/use-active-tab-route";
@@ -10,7 +10,6 @@ import { useUiStore } from "../../stores/ui";
 import { PanelErrorBoundary } from "../common";
 import { DiffPanel } from "../panels/DiffPanel";
 import { FilesPanel } from "../panels/FilesPanel";
-import { LogPanel } from "../panels/LogPanel";
 
 const MIN_WIDTH = 360;
 const MAX_WIDTH = 840;
@@ -26,17 +25,17 @@ function defaultPanelWidth(): number {
 const TABS: { id: PanelTab; labelKey: string; icon: typeof Diff }[] = [
 	{ id: "diff", labelKey: "panel.tabs.diff", icon: Diff },
 	{ id: "files", labelKey: "panel.tabs.files", icon: FolderTree },
-	{ id: "logs", labelKey: "panel.tabs.logs", icon: ScrollText },
 ];
 
 /** Drawer tabs meaningful in a tool-free chat tab (no diffs without tools). */
-const CHAT_TAB_IDS: ReadonlySet<PanelTab> = new Set(["files", "logs"]);
+const CHAT_TAB_IDS: ReadonlySet<PanelTab> = new Set(["files"]);
 
 /**
- * Contextual workspace drawer. Hidden by default; opened explicitly for
- * diffs, files, or logs without shrinking the core chat. Live execution
- * state (todos, plan, subagents, queue) renders in the center dock above
- * the composer instead — see chat/dock/WorkspaceDock.
+ * Review drawer: what the agent changed and the files it touched. Hidden by
+ * default and opened from where the question arises — the title bar's change
+ * count, a run's "Review" link in the transcript, a file link. Live execution
+ * state (todos, plan, subagents, queue) renders in the center dock above the
+ * composer, and application logs live in their own dialog.
  */
 export function PanelContainer() {
 	const t = useT();
@@ -59,7 +58,7 @@ export function PanelContainer() {
 		media.addEventListener("change", onChange);
 		return () => media.removeEventListener("change", onChange);
 	}, []);
-	/** Chat tabs only expose files + logs — diffs can't exist without tools. */
+	/** Chat tabs only expose files — diffs can't exist without tools. */
 	const isChat = useActiveTabKind() === "chat";
 	const visibleTabs = isChat ? TABS.filter(tab => CHAT_TAB_IDS.has(tab.id)) : TABS;
 	const visiblePanelTab = isChat && !CHAT_TAB_IDS.has(panelTab) ? "files" : panelTab;
@@ -138,24 +137,13 @@ export function PanelContainer() {
 			)}
 			style={{ width }}
 		>
-			<div className="flex h-[52px] shrink-0 items-center border-b border-[var(--omp-border-muted)] px-4">
-				<div>
-					<div className="text-omp-lg font-semibold text-[var(--omp-text)]">{t("panel.title")}</div>
-					<div className="text-omp-md text-[var(--omp-dim)]">{t("panel.subtitle")}</div>
-				</div>
-				<button
-					type="button"
-					onClick={togglePanel}
-					title={t("panel.close")}
-					className="omp-pressable ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-[var(--omp-muted)] hover:bg-[var(--omp-selected-bg)] hover:text-[var(--omp-text)]"
-				>
-					<X size={17} />
-				</button>
-			</div>
-			<div className="flex h-11 shrink-0 items-center overflow-x-auto border-b border-[var(--omp-border-muted)] px-3">
-				<div
-					className="flex shrink-0 items-center gap-0.5 rounded-lg bg-[var(--omp-bg-secondary)] p-0.5" // surface-ok: segmented tab track is panel chrome
-				>
+			{/* One header row: the view switcher and the close control. The panel's
+			    name is announced, not printed — the tabs already say what it holds. */}
+			<div className="flex h-12 shrink-0 items-center gap-2 overflow-x-auto border-b border-[var(--omp-border-muted)] pl-3 pr-2">
+				<h2 className="sr-only">
+					{t("panel.title")} — {t("panel.subtitle")}
+				</h2>
+				<div className="omp-segmented">
 					{visibleTabs.map(({ id, labelKey, icon: Icon }) => {
 						const active = visiblePanelTab === id;
 						return (
@@ -166,12 +154,7 @@ export function PanelContainer() {
 								aria-pressed={active}
 								type="button"
 								onClick={() => setPanelTab(id)}
-								className={cx(
-									"omp-pressable relative flex h-7 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-2.5 text-omp-md font-medium",
-									active
-										? "bg-[var(--omp-bg-elevated)] text-[var(--omp-text)] shadow-(--omp-shadow-sm)"
-										: "text-[var(--omp-muted)] hover:text-[var(--omp-text)]",
-								)}
+								className="relative flex h-7 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap px-2.5 text-omp-md font-medium"
 							>
 								<Icon size={14} />
 								<span className="omp-inspector-tab-label">{t(labelKey)}</span>
@@ -179,12 +162,19 @@ export function PanelContainer() {
 						);
 					})}
 				</div>
+				<button
+					type="button"
+					onClick={togglePanel}
+					title={t("panel.close")}
+					className="omp-pressable ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--omp-muted)] hover:bg-[var(--omp-selected-bg)] hover:text-[var(--omp-text)]"
+				>
+					<X size={16} />
+				</button>
 			</div>
 			<div className="min-h-0 flex-1 overflow-hidden">
 				<PanelErrorBoundary key={`${activeTabId ?? "no-tab"}:${visiblePanelTab}`}>
 					{visiblePanelTab === "diff" && <DiffPanel />}
 					{visiblePanelTab === "files" && <FilesPanel />}
-					{visiblePanelTab === "logs" && <LogPanel />}
 				</PanelErrorBoundary>
 			</div>
 			<div

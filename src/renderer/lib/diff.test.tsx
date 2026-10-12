@@ -2,7 +2,7 @@ import { parseHTML } from "linkedom";
 import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, describe, expect, it } from "vitest";
-import { DiffView } from "./diff";
+import { DiffView, parseDiff } from "./diff";
 import { loadHljs } from "./highlight";
 import { I18nProvider } from "./i18n";
 
@@ -68,5 +68,30 @@ describe("DiffView render budget", () => {
 		expect(paintedRows(short)).toBe(3);
 		expect(short.querySelector("button[aria-label='Copy diff']")).not.toBeNull();
 		expect(short.body.textContent ?? "").not.toContain("more lines");
+	});
+});
+
+describe("parseDiff git headers", () => {
+	it("drops git's extended header lines so a patch starts at its first real line", () => {
+		const patch = [
+			"diff --git a/README.md b/README.md",
+			"index a4445d3..cf101ac 100644",
+			"--- a/README.md",
+			"+++ b/README.md",
+			"@@ -1,2 +1,3 @@",
+			" # demo",
+			" ",
+			"+Status: reviewed",
+		].join("\n");
+		expect(parseDiff(patch).map(line => `${line.type}:${line.content}`)).toEqual([
+			"context:# demo",
+			"context:",
+			"add:Status: reviewed",
+		]);
+		// Inside a hunk the same text is source, not a header.
+		expect(parseDiff("@@ -1 +1 @@\n-index 1a..2b x\n+index 3c..4d y").map(line => line.type)).toEqual([
+			"remove",
+			"add",
+		]);
 	});
 });

@@ -112,10 +112,12 @@ describe("TitleBar", () => {
 		await mount();
 		await act(async () => Promise.resolve());
 
-		expect(container.textContent).toContain("1.5k");
-		expect(container.textContent).toContain("$0.1234");
-		expect(container.textContent).toContain("50%");
-		expect(container.textContent).toContain("5.0s");
+		// One readout of the figures that carry information; the exact cost and
+		// the cache rate are in its tooltip.
+		const metrics = container.querySelectorAll(".omp-session-metrics")[0] as unknown as HTMLElement | undefined;
+		expect(metrics?.textContent).toBe("1.5k tokens·$0.123·5.0s");
+		expect(metrics?.getAttribute("title")).toContain("$0.1234");
+		expect(metrics?.getAttribute("title")).toContain("50%");
 		expect(container.querySelectorAll(".omp-signal-light")).toHaveLength(1);
 		expect(container.querySelectorAll(".omp-signal-light--active")).toHaveLength(0);
 		expect(getSessionStats).toHaveBeenCalledTimes(1);

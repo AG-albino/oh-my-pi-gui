@@ -31,16 +31,24 @@ export function QueueDockChip() {
 					className="omp-pressable flex items-center gap-1.5 rounded-full border border-[var(--omp-border)] px-2.5 py-1 text-omp-sm font-medium text-[var(--omp-muted)] hover:border-[var(--omp-border-strong)] hover:text-[var(--omp-text)]"
 				>
 					<ListOrdered aria-hidden="true" size={12} />
-					<span>
-						{t("dock.queue.label")} <span className="tabular-nums text-[var(--omp-text)]">{followUp.length}</span>
-					</span>
-					<span aria-hidden="true" className="text-[var(--omp-dim)]">
-						·
-					</span>
-					<span>
-						{t("dock.queue.steering")}{" "}
-						<span className="tabular-nums text-[var(--omp-text)]">{steering.length}</span>
-					</span>
+					{/* Only lanes that hold something: steering delivers first, so it leads. */}
+					{steering.length > 0 && (
+						<span>
+							{t("dock.queue.steering")}{" "}
+							<span className="tabular-nums text-[var(--omp-text)]">{steering.length}</span>
+						</span>
+					)}
+					{steering.length > 0 && followUp.length > 0 && (
+						<span aria-hidden="true" className="text-[var(--omp-dim)]">
+							·
+						</span>
+					)}
+					{followUp.length > 0 && (
+						<span>
+							{t("dock.queue.label")}{" "}
+							<span className="tabular-nums text-[var(--omp-text)]">{followUp.length}</span>
+						</span>
+					)}
 				</button>
 			</div>
 			<Modal

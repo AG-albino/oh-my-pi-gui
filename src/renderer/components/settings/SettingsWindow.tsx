@@ -48,6 +48,7 @@ import {
 import type { SettingEntry, SettingsSchemaResult, SidecarStatus } from "../../../shared/rpc-types";
 import { forkSessionFromGui, prefillComposer, retryFailedTurn } from "../../lib/command-registry";
 import { exportSessionHtml } from "../../lib/export-session";
+import { cx } from "../../lib/format";
 import { useLang, useT } from "../../lib/i18n";
 import { isImeKeyEvent } from "../../lib/ime";
 import { setCodeLineNumbersPref } from "../../lib/markdown";
@@ -1013,7 +1014,14 @@ export function SettingsWindow() {
 							<X size={16} />
 						</button>
 					</header>
-					<div className="settings-content omp-column omp-column-workspace min-h-0 flex-1 overflow-y-auto py-4 min-[1080px]:py-5">
+					<div
+						className={cx(
+							"settings-content omp-column min-h-0 flex-1 overflow-y-auto py-4 min-[1080px]:py-5",
+							// Forms read on the narrow column so a switch stays beside its label;
+							// management pages (lists with detail panes) keep the wide one.
+							managementTab || tab === CAPABILITIES_TAB_ID ? "omp-column-workspace" : "omp-column-settings",
+						)}
+					>
 						{!sidecarReady && isAgentSettingsTab && (
 							<SettingsConnectionNotice
 								busy={sidecarBusy}
@@ -1084,7 +1092,7 @@ export function SettingsWindow() {
 
 								{tab === GUI_TAB_ID && (
 									<>
-										<Section id="setting-gui-theme" title={t("settings.gui.theme")}>
+										<Section id="setting-gui-theme" title={t("settings.gui.themeSection")}>
 											<Button
 												onClick={() => {
 													close();
@@ -1183,7 +1191,6 @@ export function SettingsWindow() {
 												options={[
 													{ value: "diff", label: t("settings.gui.panel.diff") },
 													{ value: "files", label: t("settings.gui.panel.files") },
-													{ value: "logs", label: t("settings.gui.panel.logs") },
 												]}
 												value={panelTab}
 											/>

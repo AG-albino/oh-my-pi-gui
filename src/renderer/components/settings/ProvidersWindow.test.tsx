@@ -240,7 +240,9 @@ const getLogoutAccounts = vi.fn(
 		type: "response",
 		command: "get_logout_accounts",
 		success: true,
-		data: { accounts: [{ credentialId: 1, provider: "anthropic", label: "a", detail: "", type: "oauth", active: true }] },
+		data: {
+			accounts: [{ credentialId: 1, provider: "anthropic", label: "a", detail: "", type: "oauth", active: true }],
+		},
 	}),
 );
 const logout = vi.fn(async (): Promise<RpcResponse> => ({ type: "response", command: "logout", success: true }));

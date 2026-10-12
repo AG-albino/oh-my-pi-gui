@@ -49,12 +49,13 @@ export function ExecutionGroup({
 	const active = live || running > 0;
 	const state = active ? "running" : failed > 0 ? "failed" : "complete";
 
+	const plural = stepCount === 1 ? "" : "s";
 	const summary =
 		failed > 0
-			? t("chat.process.statusFailed", { failed, total: stepCount })
+			? t("chat.process.statusFailed", { failed, total: stepCount, plural })
 			: running > 0 || live
-				? t("chat.process.statusRunning", { running: Math.max(1, running), total: stepCount })
-				: t("chat.process.statusComplete", { total: stepCount });
+				? t("chat.process.statusRunning", { running: Math.max(1, running), total: stepCount, plural })
+				: t("chat.process.statusComplete", { total: stepCount, plural });
 
 	return (
 		<section className={cx("omp-execution-group", className)} data-state={state}>
@@ -79,7 +80,7 @@ export function ExecutionGroup({
 					aria-live="polite"
 					className={cx(
 						"omp-execution-group-summary min-w-0 flex-1 truncate text-omp-xs",
-						state === "running" && "text-[var(--omp-accent)]",
+						state === "running" && "omp-shimmer-text",
 						state === "failed" && "text-[var(--omp-error)]",
 						state === "complete" && "text-[var(--omp-muted)]",
 					)}

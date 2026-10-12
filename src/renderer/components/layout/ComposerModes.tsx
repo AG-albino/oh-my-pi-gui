@@ -24,7 +24,7 @@ import { useUiStore } from "../../stores/ui";
 
 const triggerClass = (active: boolean) =>
 	cx(
-		"omp-pressable flex h-8 items-center gap-1.5 rounded-lg border px-2 text-omp-md font-medium",
+		"omp-pressable flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-omp-md font-medium",
 		active
 			? "border-[var(--omp-border-accent)] bg-[var(--omp-accent-dim)] text-[var(--omp-accent)]"
 			: "border-transparent text-[var(--omp-muted)] hover:bg-[var(--omp-selected-bg)]",
@@ -218,7 +218,7 @@ export function ComposerModes() {
 								onSelect={() => select(openModelRoles)}
 							/>
 							<div className="mx-2 my-1 border-t border-[var(--omp-border-muted)]" />
-							<div className="px-2.5 pt-1 pb-0.5 text-omp-xs font-semibold uppercase tracking-wide text-[var(--omp-dim)]">
+							<div className="px-2.5 pt-1 pb-0.5 text-omp-xs font-semibold text-[var(--omp-dim)]">
 								{t("input.more.label")}
 							</div>
 							<MoreRow

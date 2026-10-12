@@ -138,16 +138,53 @@ export function claimRowEntrances(state: RowEntranceState, pass: RowEntrancePass
 }
 
 export type HistoryRow =
-	| { kind: "message"; message: AgentMessage; reaction?: string }
+	| { kind: "message"; message: AgentMessage; reaction?: string; repeats?: number }
 	| { kind: "readGroup"; entries: ReadGroupEntry[]; usage?: ReadGroupUsage[] }
 	| ({ kind: "process"; messages: AgentMessage[] } & ProcessMeta)
 	| { kind: "todoSnapshot"; entry: TodoSnapshot };
+
+/** What one run changed on disk: distinct files and their line totals. */
+export interface TurnChangeSummary {
+	files: number;
+	adds: number;
+	removes: number;
+}
+
+/**
+ * Summarize the file edits a run made since its prompt (`sinceMs`). Failed
+ * edits changed nothing and virtual artifacts are not files, so neither
+ * counts; a file edited several times counts once, its lines every time.
+ * Null when the run changed no file — the transcript then shows no summary.
+ */
+export function summarizeTurnChanges(
+	edits: ReadonlyArray<{
+		file: string;
+		timestamp: number;
+		adds: number;
+		removes: number;
+		isError: boolean;
+		isVirtual: boolean;
+	}>,
+	sinceMs: number,
+): TurnChangeSummary | null {
+	const files = new Set<string>();
+	let adds = 0;
+	let removes = 0;
+	for (const edit of edits) {
+		if (edit.timestamp < sinceMs || edit.isError || edit.isVirtual) continue;
+		files.add(edit.file);
+		adds += edit.adds;
+		removes += edit.removes;
+	}
+	return files.size > 0 ? { files: files.size, adds, removes } : null;
+}
 
 /** Virtualized row: finalized history or one of the live streaming rows. */
 export type Row =
 	| HistoryRow
 	| { kind: "streaming"; message: AgentMessage }
 	| { kind: "pending" }
+	| { kind: "turnChanges"; since: number; summary: TurnChangeSummary }
 	| { kind: "expander"; count: number }
 	| { kind: "queued"; item: RpcQueuedMessage; lane: QueueLane };
 function messageKey(message: AgentMessage): string {
@@ -181,6 +218,8 @@ function transcriptRowBaseKey(row: Row): string {
 			return `message-${messageKey(row.message)}`;
 		case "pending":
 			return row.kind;
+		case "turnChanges":
+			return `turn-changes-${row.since}`;
 		case "expander":
 			return "pre-compaction-expander";
 	}
@@ -276,6 +315,16 @@ function hasProcessNarration(message: AgentMessage): boolean {
 		if (block.type === "thinking") return isRenderableMessageText(block.thinking);
 		return false;
 	});
+}
+
+/** A failed reply whose provider error is its whole body (nothing streamed). */
+function isBareError(message: AgentMessage): boolean {
+	return (
+		message.role === "assistant" &&
+		Boolean(message.errorMessage) &&
+		!hasProcessNarration(message) &&
+		!messageContent(message).some(block => block.type === "toolCall" || block.type === "image")
+	);
 }
 
 /**
@@ -412,6 +461,18 @@ export function buildHistoryRows(
 			!Array.isArray(message.content)
 		) {
 			flushProcess();
+			// Auto-retry leaves one failed reply per attempt. The same bare error
+			// back to back reads as one card with an attempt count, not a stack.
+			const previous = rows.at(-1);
+			if (
+				isBareError(message) &&
+				previous?.kind === "message" &&
+				isBareError(previous.message) &&
+				previous.message.errorMessage === message.errorMessage
+			) {
+				rows[rows.length - 1] = { kind: "message", message, repeats: (previous.repeats ?? 1) + 1 };
+				continue;
+			}
 			rows.push({ kind: "message", message });
 			if (message.role === "user") reactionTargetIndex = rows.length - 1;
 			continue;

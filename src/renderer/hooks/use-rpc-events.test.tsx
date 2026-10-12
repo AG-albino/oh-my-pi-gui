@@ -1009,6 +1009,50 @@ describe("useRpcEvents mode-state sync", () => {
 	});
 });
 
+describe("failure toasts", () => {
+	// The transcript's retry row and error card say this in place; toasting it
+	// too doubled every provider failure for the tab the user was watching.
+	it("stay quiet for the tab on screen and speak for one in the background", async () => {
+		const { emitBatch } = installMockOmp();
+		useTabsStore.setState({
+			tabs: [{ kind: "agent", id: "t0", cwd: "/alpha", status: "ready", unreadDone: false }],
+			activeTabId: "t0",
+			bundles: new Map(),
+		});
+		useToastStore.setState({ toasts: [] });
+		// The test DOM has no focus model; stand one in for this test only.
+		let windowFocused = true;
+		Object.defineProperty(document, "hasFocus", { configurable: true, value: () => windowFocused });
+		await mount(<RpcEventsProbe />);
+		const failure: AgentSessionEvent[] = [
+			{ type: "agent_start", sessionId: "s1" },
+			{ type: "auto_retry_start", attempt: 1, maxAttempts: 3, delayMs: 5000, errorMessage: "boom" },
+			{ type: "auto_retry_end", success: false, attempt: 3, finalError: "boom" },
+			{
+				type: "agent_end",
+				messages: [{ role: "assistant", content: [], timestamp: 1, stopReason: "error", errorMessage: "boom" }],
+			},
+		];
+
+		await act(async () => {
+			emitBatch(failure);
+		});
+		expect(useToastStore.getState().toasts).toEqual([]);
+
+		windowFocused = false;
+		await act(async () => {
+			emitBatch(failure);
+		});
+		const titles = useToastStore.getState().toasts.map(toast => toast.title ?? toast.message);
+		expect(titles).toContain("Turn failed");
+		expect(titles.some(title => title.startsWith("Retry 1/3"))).toBe(true);
+
+		Reflect.deleteProperty(document, "hasFocus");
+		useTabsStore.getState().reset();
+		useToastStore.setState({ toasts: [] });
+	});
+});
+
 describe("retryPending reset on tab switch", () => {
 	it("clears the auto-retry gate so the restored tab's failed turns still toast", async () => {
 		const { emitBatch } = installMockOmp();
@@ -1056,12 +1100,15 @@ describe("retryPending reset on tab switch", () => {
 });
 
 describe("TurnStatusRow", () => {
-	it("renders the waiting label with elapsed seconds and the interrupt hint", async () => {
+	it("keeps a prompt wait to its label and adds the elapsed time once the wait is noticeable", async () => {
+		useSessionStore.setState({ awaitingModelSince: Date.now() - 2000 });
+		await mount(<TurnStatusRow />);
+		expect(document.body.textContent).toContain("Waiting for the model");
+		expect(document.body.textContent).not.toContain("2s");
+
 		useSessionStore.setState({ awaitingModelSince: Date.now() - 5000 });
 		await mount(<TurnStatusRow />);
-		expect(document.body.textContent).toContain("Waiting for model response");
 		expect(document.body.textContent).toContain("5s");
-		expect(document.body.textContent).toContain("(press Esc to interrupt)");
 		expect(document.body.textContent).not.toContain("Slow response");
 	});
 
@@ -1072,17 +1119,16 @@ describe("TurnStatusRow", () => {
 		expect(document.body.textContent).toContain("Slow response");
 	});
 
-	it("escalates to the stalled-connection hint after 90s, replacing the generic interrupt hint", async () => {
+	it("escalates to the stalled hint with a Stop action after 90s", async () => {
 		useSessionStore.setState({ awaitingModelSince: Date.now() - 95_000 });
 		await mount(<TurnStatusRow />);
 		expect(document.body.textContent).toContain("95s");
-		// The stalled copy explains the ~5min watchdog + retry and names Esc
-		// itself, so the generic interrupt hint would be redundant noise.
-		expect(document.body.textContent).toContain("auto-times-out");
-		expect(document.body.textContent).not.toContain("(press Esc to interrupt)");
+		expect(document.body.textContent).toContain("times out");
+		expect(document.body.textContent).not.toContain("Slow response");
+		expect([...document.querySelectorAll("button")].some(button => button.textContent === "Stop")).toBe(true);
 	});
 
-	it("renders the retry countdown with the failure detail", async () => {
+	it("renders the retry countdown, the attempt and the failure", async () => {
 		useSessionStore.setState({
 			retryInfo: {
 				attempt: 2,
@@ -1093,8 +1139,30 @@ describe("TurnStatusRow", () => {
 			},
 		});
 		await mount(<TurnStatusRow />);
-		expect(document.body.textContent).toContain("Retrying (2/5) in 9s…");
+		expect(document.body.textContent).toContain("Retrying in 9s");
+		expect(document.body.textContent).toContain("Attempt 2 of 5");
 		expect(document.body.textContent).toContain("stream stalled");
+	});
+
+	it("leaves the failure to the failed reply when the transcript already shows it", async () => {
+		useMessagesStore.setState({
+			messages: [
+				{ role: "assistant", content: [], timestamp: 1, stopReason: "error", errorMessage: "stream stalled" },
+			],
+		});
+		useSessionStore.setState({
+			retryInfo: {
+				attempt: 1,
+				maxAttempts: 5,
+				delayMs: 9000,
+				errorMessage: "stream stalled",
+				startedAt: Date.now(),
+			},
+		});
+		await mount(<TurnStatusRow />);
+		expect(document.body.textContent).toContain("Retrying in 9s");
+		expect(document.body.textContent).not.toContain("stream stalled");
+		useMessagesStore.setState({ messages: [] });
 	});
 
 	it("renders the in-flight retry once the delay elapses", async () => {
@@ -1108,7 +1176,7 @@ describe("TurnStatusRow", () => {
 			},
 		});
 		await mount(<TurnStatusRow />);
-		expect(document.body.textContent).toContain("Retrying (2/5)…");
+		expect(document.body.textContent).toContain("Retrying now");
 		expect(document.body.textContent).not.toContain("in 9s");
 	});
 

@@ -98,15 +98,13 @@ export function GenericRenderer({ args, result, isError, isPartial, partialResul
 	return (
 		<div className="flex flex-col gap-1.5">
 			<div>
-				<div className="mb-0.5 text-omp-xxs font-semibold uppercase tracking-wider text-[var(--omp-dim)]">
-					{t("tools.generic.args")}
-				</div>
+				<div className="mb-0.5 text-omp-xxs font-semibold text-[var(--omp-dim)]">{t("tools.generic.args")}</div>
 				<KeyValueView value={args} />
 			</div>
 			<div>
 				<div
 					className={cx(
-						"mb-0.5 text-omp-xxs font-semibold uppercase tracking-wider",
+						"mb-0.5 text-omp-xxs font-semibold",
 						isError ? "text-[var(--omp-error)]" : "text-[var(--omp-dim)]",
 					)}
 				>
@@ -135,7 +133,7 @@ export function GenericRenderer({ args, result, isError, isPartial, partialResul
 			</div>
 			{hasDetails && (
 				<div>
-					<div className="mb-0.5 text-omp-xxs font-semibold uppercase tracking-wider text-[var(--omp-dim)]">
+					<div className="mb-0.5 text-omp-xxs font-semibold text-[var(--omp-dim)]">
 						{t("tools.generic.details")}
 					</div>
 					<KeyValueView value={details} />

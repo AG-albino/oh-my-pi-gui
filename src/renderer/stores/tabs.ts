@@ -26,7 +26,7 @@ import type {
 	TabStatus,
 } from "../../shared/ipc-types";
 import type { ExtensionUIRequest, RpcSessionState } from "../../shared/rpc-types";
-import { hydrateTabSession } from "../hooks/use-rpc-events";
+import { hydrateTabSession, notifyBackgroundSettle } from "../hooks/use-rpc-events";
 import { basename } from "../lib/format";
 import { translate } from "../lib/i18n";
 import { sessionDisplayTitle } from "../lib/session-title";
@@ -75,6 +75,8 @@ export interface SessionTab {
 	sessionId?: string;
 	/** A run completed while this tab was in the background. */
 	unreadDone: boolean;
+	/** Auto-retry in flight, or the last run ended in an error (main-tracked). */
+	attention?: "retrying" | "failed";
 	/** Session to open once this tab's sidecar first reports ready (the
 	 * open-session-in-new-tab flow — the sidecar starts on a fresh session and
 	 * must be switched over before its transcript hydrates). */
@@ -287,6 +289,11 @@ export const useTabsStore = create<TabsStore>()((set, get) => ({
 					sessionPath: info.sessionPath === undefined ? existing?.sessionPath : (info.sessionPath ?? undefined),
 					sessionId: info.sessionId ?? existing?.sessionId,
 					unreadDone: sessionChanged ? false : (existing?.unreadDone ?? false),
+					attention: sessionChanged
+						? undefined
+						: info.attention === undefined
+							? existing?.attention
+							: (info.attention ?? undefined),
 					pendingSessionPath: existing?.pendingSessionPath,
 				};
 			});
@@ -357,7 +364,7 @@ export const useTabsStore = create<TabsStore>()((set, get) => ({
 			return null;
 		}
 		if (!result) {
-			toast({ variant: "warning", message: translate("tabs.parallelCap") });
+			toast({ variant: "error", message: translate("tabs.newFailed") });
 			return null;
 		}
 		// Cross-kind refusal: the target session file carries a different kind —
@@ -621,13 +628,16 @@ export const useTabsStore = create<TabsStore>()((set, get) => ({
 			replaceTabRuntime(payload.tabId);
 			if (active) setFocusedSessionRuntime(payload.tabId);
 		}
+		// A background tab's run settled → done badge until the user visits, and
+		// a notice: its full event stream (and so the usual end-of-run toast and
+		// desktop notification) only reaches the renderer while it is on screen.
+		const completedInBackground =
+			!visibleTabIds(state).includes(payload.tabId) &&
+			previous?.status === "running" &&
+			payload.status === "ready" &&
+			!sessionChanged;
 		set(current => {
 			const index = current.tabs.findIndex(tab => tab.id === payload.tabId);
-			// A background tab's run settled → done badge until the user visits.
-			const completedInBackground =
-				!visibleTabIds(current).includes(payload.tabId) &&
-				previous?.status === "running" &&
-				payload.status === "ready";
 			const next: SessionTab = {
 				id: payload.tabId,
 				cwd: payload.cwd || previous?.cwd || "",
@@ -645,6 +655,11 @@ export const useTabsStore = create<TabsStore>()((set, get) => ({
 				sessionPath: payload.sessionPath === undefined ? previous?.sessionPath : (payload.sessionPath ?? undefined),
 				sessionId: payload.sessionId ?? previous?.sessionId,
 				unreadDone: sessionChanged ? false : completedInBackground ? true : (previous?.unreadDone ?? false),
+				attention: sessionChanged
+					? undefined
+					: payload.attention === undefined
+						? previous?.attention
+						: (payload.attention ?? undefined),
 				pendingSessionPath: previous?.pendingSessionPath,
 			};
 			if (index === -1) return { tabs: [...current.tabs, next] };
@@ -652,6 +667,18 @@ export const useTabsStore = create<TabsStore>()((set, get) => ({
 			tabs[index] = next;
 			return { tabs };
 		});
+		if (completedInBackground) {
+			const tabs = get().tabs;
+			const settled = tabs.find(tab => tab.id === payload.tabId);
+			if (settled) {
+				notifyBackgroundSettle(
+					settled.id,
+					tabChipLabel(settled, tabs),
+					settled.attention === "failed" ? "failed" : "complete",
+					payload.attentionDetail,
+				);
+			}
+		}
 		const session = sessionRuntimeStore<SessionStore>(payload.tabId, "session");
 		if (sessionChanged && (payload.status === "ready" || payload.status === "running")) {
 			void hydrateTabSession(payload.tabId);
@@ -661,6 +688,9 @@ export const useTabsStore = create<TabsStore>()((set, get) => ({
 			session.setState({
 				isStreaming: payload.status === "running",
 				isCompacting: payload.compacting ?? session.getState().isCompacting,
+				// A retry that began while this tab was parked never reached its
+				// event stream; main's snapshot lets the tab show it when visited.
+				...(payload.retry !== undefined ? { retryInfo: payload.retry } : {}),
 			});
 		} else if (active) {
 			useSessionStore.getState().setStatus(payload.status === "running" ? "ready" : payload.status, payload.cwd);

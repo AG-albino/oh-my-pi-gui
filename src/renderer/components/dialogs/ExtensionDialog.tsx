@@ -46,7 +46,7 @@ function ExtensionSurfaces() {
 					key={key}
 					role="region"
 				>
-					<div className="mb-0.5 text-omp-xxs font-medium tracking-widest text-(--omp-dim) uppercase">{key}</div>
+					<div className="mb-0.5 text-omp-xxs font-medium text-(--omp-dim)">{key}</div>
 					{lines.map((line, index) => (
 						<div
 							className="font-mono text-omp-xs leading-snug break-words whitespace-pre-wrap text-(--omp-text)"
@@ -324,9 +324,7 @@ function AskDialog({
 					return (
 						<div className="space-y-2" key={question.id}>
 							{question.header && (
-								<div className="text-omp-xxs font-medium tracking-widest text-(--omp-dim) uppercase">
-									{question.header}
-								</div>
+								<div className="text-omp-xxs font-medium text-(--omp-dim)">{question.header}</div>
 							)}
 							<p className="text-xs leading-relaxed font-medium break-words whitespace-pre-wrap text-(--omp-text)">
 								{request.questions.length > 1 ? `${questionIndex + 1}. ` : ""}

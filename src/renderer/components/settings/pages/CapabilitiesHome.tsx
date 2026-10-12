@@ -195,7 +195,7 @@ export function CapabilitiesHome({
 	return (
 		<div>
 			<header className="mb-6 max-w-2xl">
-				<div className="mb-2 flex items-center gap-1.5 text-omp-xs font-semibold tracking-[0.14em] text-(--omp-accent) uppercase">
+				<div className="mb-2 flex items-center gap-1.5 text-omp-xs font-semibold text-(--omp-accent)">
 					<Sparkles size={12} />
 					{t("settings.capabilities.eyebrow")}
 				</div>

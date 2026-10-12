@@ -1,7 +1,8 @@
 /**
- * Context strategy row under the composer: the running model, what happens to
- * history when its context fills, and where that happens — one line, always
- * visible. Clicking it opens the controls (strategy, threshold, retention).
+ * Context row under the composer: what happens to history when the context
+ * fills and where that happens (left), and how full it is now (right) — one
+ * line, always visible. The model is named once, in the composer's picker.
+ * Clicking the strategy opens its controls (strategy, threshold, retention).
  *
  * The strategy logic lives in `lib/context-strategy`; this file renders it and
  * writes the chosen settings back through `set_setting`.
@@ -37,6 +38,7 @@ import { sessionRuntimeStore, useRuntimeTabId } from "../../stores/session-runti
 import { type SettingsStore, useSettingsStore } from "../../stores/settings";
 import { toast } from "../../stores/toast";
 import { useUiStore } from "../../stores/ui";
+import { ContextUsagePopover } from "./ContextUsagePopover";
 
 const POPOVER_WIDTH = 400;
 const EDGE = 12;
@@ -212,7 +214,6 @@ export function ContextStrategyBar() {
 	const method = expectedMethod(config, profile);
 	const threshold = compactionThreshold(config, profile);
 	const modelName = model.name ?? model.id;
-	const windowText = profile.windowTokens ? formatTokens(profile.windowTokens) : null;
 	const methodName = t(`contextStrategy.method.${methodKey(method)}`);
 	const atText = threshold !== null ? t("contextStrategy.at", { tokens: formatTokens(threshold) }) : null;
 	// Nudge only a reader still on the defaults: someone who chose a strategy knows why.
@@ -236,7 +237,7 @@ export function ContextStrategyBar() {
 	};
 
 	return (
-		<div className="omp-context-bar flex h-6 min-w-0 items-center px-1">
+		<div className="omp-context-bar flex h-6 min-w-0 items-center justify-between gap-2 px-1">
 			<button
 				ref={triggerRef}
 				type="button"
@@ -248,11 +249,6 @@ export function ContextStrategyBar() {
 				className="omp-pressable flex h-6 min-w-0 max-w-full items-center gap-1.5 rounded-md px-1.5 text-omp-xs text-(--omp-dim) hover:bg-(--omp-selected-bg) hover:text-(--omp-muted)"
 			>
 				<Layers aria-hidden size={12} className="shrink-0" />
-				<span className="omp-context-bar-model flex min-w-0 items-center gap-1.5">
-					<span className="max-w-40 truncate">{modelName}</span>
-					{windowText && <span className="shrink-0 tabular-nums">{windowText}</span>}
-					<span aria-hidden>·</span>
-				</span>
 				<span className="shrink-0 font-medium text-(--omp-muted)">{t(`contextStrategy.strategy.${strategy}`)}</span>
 				{autoCompaction ? (
 					<span className="omp-context-bar-detail flex min-w-0 items-center gap-1.5">
@@ -276,6 +272,7 @@ export function ContextStrategyBar() {
 					/>
 				)}
 			</button>
+			<ContextUsagePopover />
 
 			{mounted &&
 				pos &&

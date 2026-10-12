@@ -639,7 +639,7 @@ export function CommandPalette() {
 						<span className="truncate text-xs font-medium text-(--omp-text)">{item.label}</span>
 						{toggleOn !== null && (
 							<span
-								className={`rounded px-1 text-omp-xxs font-semibold uppercase ${
+								className={`rounded px-1 text-omp-xxs font-semibold ${
 									toggleOn ? "text-(--omp-success)" : "text-(--omp-dim)"
 								}`}
 							>
@@ -661,9 +661,7 @@ export function CommandPalette() {
 					</span>
 				</span>
 				{options?.categoryLabel && (
-					<span className="shrink-0 text-omp-xxs tracking-wide text-(--omp-dim) uppercase">
-						{options.categoryLabel}
-					</span>
+					<span className="shrink-0 text-omp-xxs text-(--omp-dim)">{options.categoryLabel}</span>
 				)}
 				{isSubmenu ? (
 					<ChevronRight className="shrink-0 text-(--omp-dim)" size={12} />
@@ -749,7 +747,7 @@ export function CommandPalette() {
 						<>
 							{recentItems.length > 0 && (
 								<div className="mb-1">
-									<div className="flex items-center gap-1.5 px-2 pt-1.5 pb-0.5 text-omp-xxs font-semibold tracking-widest text-(--omp-dim) uppercase">
+									<div className="flex items-center gap-1.5 px-2 pt-1.5 pb-0.5 text-omp-xxs font-semibold text-(--omp-dim)">
 										{t("palette.recent")}
 									</div>
 									{recentItems.map(item => renderItem(item, { recent: true }))}
@@ -757,7 +755,7 @@ export function CommandPalette() {
 							)}
 							{Array.from(grouped.entries()).map(([category, items]) => (
 								<div key={category} className="mb-1">
-									<div className="flex items-center gap-1.5 px-2 pt-1.5 pb-0.5 text-omp-xxs font-semibold tracking-widest text-(--omp-dim) uppercase">
+									<div className="flex items-center gap-1.5 px-2 pt-1.5 pb-0.5 text-omp-xxs font-semibold text-(--omp-dim)">
 										{t(`category.${category}`)}
 									</div>
 									{items.map(item => renderItem(item))}

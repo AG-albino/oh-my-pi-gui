@@ -303,7 +303,7 @@ export function SshSettingsPage() {
 
 			<div className="ssh-master-detail overflow-hidden rounded-lg border border-(--omp-border-muted)">
 				<section className="ssh-list-pane min-w-0 overflow-x-auto">
-					<div className="grid grid-cols-[minmax(100px,.7fr)_minmax(180px,1.4fr)_70px_110px_80px] gap-3 border-b border-(--omp-border-muted) px-3 py-2 text-omp-xxs font-semibold uppercase tracking-wider text-(--omp-dim)">
+					<div className="grid grid-cols-[minmax(100px,.7fr)_minmax(180px,1.4fr)_70px_110px_80px] gap-3 border-b border-(--omp-border-muted) px-3 py-2 text-omp-xxs font-semibold text-(--omp-dim)">
 						<span>{t("ssh.columns.alias")}</span>
 						<span>{t("ssh.columns.target")}</span>
 						<span>{t("ssh.columns.scope")}</span>
@@ -476,10 +476,10 @@ export function SshSettingsPage() {
 								</span>
 							</span>
 							<span
-								className={`relative mt-0.5 h-4.5 w-8 shrink-0 rounded-full ${draft.compat ? "bg-(--omp-switch-on)" : "bg-(--omp-switch-off)" /* surface-ok: toggle switch track fill */}`}
+								className={`relative mt-0.5 h-5 w-9 shrink-0 rounded-full ${draft.compat ? "bg-(--omp-switch-on)" : "bg-(--omp-switch-off)" /* surface-ok: toggle switch track fill */}`}
 							>
 								<span
-									className={`absolute top-0.5 size-3.5 rounded-full bg-white shadow transition-[left] ${draft.compat ? "left-4" : "left-0.5"}`}
+									className={`omp-switch-thumb absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow ${draft.compat ? "translate-x-4" : "translate-x-0"}`}
 								/>
 							</span>
 						</button>

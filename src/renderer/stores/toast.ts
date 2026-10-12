@@ -37,7 +37,7 @@ interface ToastStore {
 
 let nextId = 1;
 /** How long a dismissed toast lingers for its exit animation (`--omp-motion-fast` plus a frame). */
-const TOAST_EXIT_MS = 130;
+const TOAST_EXIT_MS = 160;
 
 export const useToastStore = create<ToastStore>()(set => ({
 	toasts: [],

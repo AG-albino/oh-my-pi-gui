@@ -385,7 +385,7 @@ describe("TabBar", () => {
 		expect(tabWorkspaces()).toEqual(["alpha", "beta"]);
 	});
 
-	it("keeps chips fixed-width and exposes a truncated title through the tooltip", async () => {
+	it("bounds chip width and exposes a truncated title through the tooltip", async () => {
 		useTabsStore.setState({
 			tabs: [
 				{
@@ -404,9 +404,14 @@ describe("TabBar", () => {
 		await mount(<TabBar />);
 
 		const [longChip, shortChip] = chips();
-		expect([longChip, shortChip].every(chip => chip?.getAttribute("class")?.split(/\s+/).includes("w-44"))).toBe(
-			true,
-		);
+		// Chips size to their title between a floor and a ceiling, so a long title
+		// cannot push its neighbors off the strip.
+		expect(
+			[longChip, shortChip].every(chip => {
+				const classes = chip?.getAttribute("class")?.split(/\s+/) ?? [];
+				return classes.includes("min-w-28") && classes.includes("max-w-52");
+			}),
+		).toBe(true);
 		expect(longChip?.getAttribute("title")).toContain("A deliberately long session title");
 		expect(longChip?.querySelector("[data-tab-title]")?.getAttribute("class")).toContain("truncate");
 	});
@@ -430,7 +435,7 @@ describe("TabBar", () => {
 		expect(container.querySelectorAll('[role="tab"] button').length).toBeGreaterThan(0);
 	});
 
-	it("renders slow vertical signal lights for running and completed tabs", async () => {
+	it("renders status dots for running and completed tabs", async () => {
 		useTabsStore.setState({
 			tabs: [
 				{ kind: "agent", id: "t0", cwd: "/alpha", status: "running", unreadDone: false },
@@ -444,7 +449,6 @@ describe("TabBar", () => {
 		const rendered = chips();
 		expect(rendered.every(chip => chip.querySelector(".omp-tab-signal") !== null)).toBe(true);
 		expect(rendered.every(chip => chip.getAttribute("class")?.includes("overflow-hidden"))).toBe(true);
-		expect(rendered.every(chip => !chip.getAttribute("class")?.includes("rounded"))).toBe(true);
 		expect(rendered[0]?.querySelector(".omp-signal-light--active")).not.toBeNull();
 		expect(rendered[1]?.querySelector(".omp-signal-light--active")).toBeNull();
 		expect(rendered[0]?.querySelector('[aria-label="Working"]')).not.toBeNull();

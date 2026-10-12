@@ -16,6 +16,7 @@ import {
 	mergeTodoSnapshots,
 	ROW_ENTRANCE_TAIL_ROWS,
 	shouldRePinTranscript,
+	summarizeTurnChanges,
 	tabAwaitsTranscript,
 } from "./ChatStream";
 
@@ -167,6 +168,34 @@ describe("full transcript rows", () => {
 		if (user?.kind !== "message" || reply?.kind !== "message") throw new Error("reaction rows missing");
 		expect(user.reaction).toBe("👍");
 		expect(reply.message.content).toEqual([{ type: "text", text: "Shipped." }]);
+	});
+
+	it("collapses back-to-back identical failed attempts into one card that keeps the latest", () => {
+		const failed = (errorMessage: string, timestamp: string): AgentMessage => ({
+			role: "assistant",
+			content: [],
+			stopReason: "error",
+			errorMessage,
+			timestamp,
+		});
+		const latest = failed("overloaded", "2026-08-05T04:00:03.000Z");
+		const rows = buildHistoryRows(
+			[
+				{ role: "user", content: [{ type: "text", text: "Go" }], timestamp: at },
+				failed("overloaded", at),
+				failed("overloaded", "2026-08-05T04:00:02.000Z"),
+				latest,
+				failed("rate limited", "2026-08-05T04:00:04.000Z"),
+			],
+			"full",
+		);
+
+		expect(rows.map(row => (row.kind === "message" ? [row.message.errorMessage, row.repeats] : row.kind))).toEqual([
+			[undefined, undefined],
+			["overloaded", 3],
+			["rate limited", undefined],
+		]);
+		expect(rows[1]?.kind === "message" && rows[1].message).toBe(latest);
 	});
 
 	it("preserves an earlier failure after the user starts another turn", () => {
@@ -536,5 +565,33 @@ describe("tabAwaitsTranscript", () => {
 		expect(tabAwaitsTranscript({ pendingSessionPath: "/sessions/b.jsonl" })).toBe(true);
 		// An unknown tab is treated conservatively, as one with history.
 		expect(tabAwaitsTranscript(undefined)).toBe(true);
+	});
+});
+
+describe("summarizeTurnChanges", () => {
+	const edit = (file: string, timestamp: number, adds: number, removes: number, extra = {}) => ({
+		file,
+		timestamp,
+		adds,
+		removes,
+		isError: false,
+		isVirtual: false,
+		...extra,
+	});
+
+	it("counts the run's files once and its lines every time, ignoring what changed nothing on disk", () => {
+		const summary = summarizeTurnChanges(
+			[
+				edit("src/a.ts", 900, 7, 7), // before this prompt: an earlier run's edit
+				edit("src/a.ts", 1_000, 2, 1),
+				edit("src/a.ts", 1_100, 3, 0), // same file again
+				edit("src/b.ts", 1_200, 1, 4),
+				edit("src/c.ts", 1_300, 9, 9, { isError: true }), // failed edit
+				edit("memory://notes", 1_400, 5, 0, { isVirtual: true }), // not a file
+			],
+			1_000,
+		);
+		expect(summary).toEqual({ files: 2, adds: 6, removes: 5 });
+		expect(summarizeTurnChanges([edit("src/a.ts", 900, 1, 1)], 1_000)).toBeNull();
 	});
 });

@@ -119,12 +119,12 @@ function TabChip({
 			}}
 			title={`${label} — ${workspaceLabel}${tab.worktree ? ` — ${tab.worktree.branch}` : ""}`}
 			className={cx(
-				"no-drag group relative flex h-9 w-44 shrink-0 cursor-pointer items-center gap-2 overflow-hidden px-2.5 text-omp-md select-none",
+				"no-drag group relative flex h-8 w-auto min-w-28 max-w-52 shrink-0 cursor-pointer items-center gap-2 overflow-hidden rounded-lg px-3 text-omp-md select-none",
 				active
 					? "bg-[var(--omp-selected-bg)] font-medium text-[var(--omp-text)]"
 					: visible
-						? "bg-[var(--omp-selected-bg)]/55 text-[var(--omp-text)] ring-1 ring-inset ring-[var(--omp-border-accent)]"
-						: "text-[var(--omp-muted)] hover:bg-[var(--omp-selected-bg)] hover:text-[var(--omp-text)]",
+						? "bg-[var(--omp-selected-bg)]/55 text-[var(--omp-text)] ring-1 ring-inset ring-[var(--omp-border)]"
+						: "text-[var(--omp-muted)] hover:bg-[var(--omp-sidebar-item-hover)] hover:text-[var(--omp-text)]",
 			)}
 		>
 			<span
@@ -132,6 +132,7 @@ function TabChip({
 				aria-label={signalLabel}
 				title={signalLabel}
 				className={cx("omp-signal-light omp-tab-signal", signal.active && "omp-signal-light--active")}
+				data-idle={(!signal.active && signal.color === "var(--omp-dim)") || undefined}
 				style={{ color: signal.color }}
 			/>
 			{tab.worktree && (
@@ -150,7 +151,8 @@ function TabChip({
 					<span className="block truncate" data-tab-title>
 						{label}
 					</span>
-					<span className="block truncate text-omp-xxs font-normal text-[var(--omp-dim)]" data-tab-workspace>
+					{/* One line per tab; the workspace stays in the tooltip and for assistive tech. */}
+					<span className="sr-only" data-tab-workspace>
 						{workspaceLabel}
 					</span>
 				</span>
@@ -238,6 +240,14 @@ export function TabBar({ confirmCloseMs = CONFIRM_CLOSE_MS }: { confirmCloseMs?:
 	const cancelCloseTab = useUiStore(s => s.cancelCloseTab);
 	const [tabMenu, setTabMenu] = useState<{ anchor: ContextMenuAnchor; tabId: string } | null>(null);
 	const tabOrder = useMemo(() => tabs.map(tab => tab.id), [tabs]);
+
+	// Keep the focused chip in view when it changes or the strip grows past the
+	// window (a new tab lands at the end).
+	// biome-ignore lint/correctness/useExhaustiveDependencies: tab count changes the strip's scroll extent.
+	useEffect(() => {
+		if (!activeTabId) return;
+		document.getElementById(`omp-tab-${activeTabId}`)?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+	}, [activeTabId, tabs.length]);
 
 	useEffect(() => {
 		if (!armedCloseTab) return;
@@ -346,50 +356,58 @@ export function TabBar({ confirmCloseMs = CONFIRM_CLOSE_MS }: { confirmCloseMs?:
 
 	return (
 		<>
-			<div
-				role="tablist"
-				aria-label={t("tabs.strip")}
-				className="drag-region flex h-12 shrink-0 items-center gap-1 overflow-x-auto border-b border-[var(--omp-border-muted)] bg-[var(--omp-titlebar-bg)] px-2"
-			>
-				{tabs.map(tab => {
-					const visible = visibleTabIds({ activeTabId, split }).includes(tab.id);
-					const indexedSession =
-						(tab.sessionPath ? sessionsByPath.get(tab.sessionPath) : undefined) ??
-						(tab.sessionId ? sessionsById.get(tab.sessionId) : undefined);
-					const label = tabDisplayTitle(tab, tabs, indexedSession, t("sidebar.untitled"));
-					const workspaceLabel =
-						tab.kind === "chat" ? t("sidebar.chats") : (groupAliases[tab.cwd] ?? basename(tab.cwd) ?? tab.cwd);
-					return (
-						<TabChip
-							key={tab.id}
-							tab={tab}
-							active={tab.id === activeTabId}
-							visible={visible}
-							label={label}
-							workspaceLabel={workspaceLabel}
-							confirmingClose={armedCloseTab?.tabId === tab.id}
-							closeNeedsConfirm={tabNeedsCloseConfirm(tab, liveRuntime)}
-							onArmClose={() => armCloseTab(tab.id)}
-							onConfirmClose={() => confirmClose(tab.id)}
-							onCancelClose={cancelCloseTab}
-							onContextMenu={event => setTabMenu({ anchor: anchorFromEvent(event), tabId: tab.id })}
-							onKeyboardNavigate={key => {
-								const index = tabOrder.indexOf(tab.id);
-								const targetIndex =
-									key === "Home"
-										? 0
-										: key === "End"
-											? tabOrder.length - 1
-											: (index + (key === "ArrowLeft" ? -1 : 1) + tabOrder.length) % tabOrder.length;
-								const target = tabOrder[targetIndex];
-								if (target) {
-									void useTabsStore.getState().switchTab(target);
-									requestAnimationFrame(() => document.getElementById(`omp-tab-${target}`)?.focus());
-								}
-							}}
-						/>
-					);
-				})}
+			<div className="drag-region flex h-11 shrink-0 items-center gap-1 border-b border-[var(--omp-border-muted)] bg-[var(--omp-titlebar-bg)] px-2.5">
+				{/* Only the chips scroll: the tab actions and "+" stay pinned at the end,
+				    reachable however many tabs are open. */}
+				<div
+					role="tablist"
+					aria-label={t("tabs.strip")}
+					className="omp-tab-scroller flex min-w-0 items-center gap-1 overflow-x-auto"
+					onWheel={event => {
+						// A plain mouse wheel only scrolls vertically; map it onto the strip.
+						if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) event.currentTarget.scrollLeft += event.deltaY;
+					}}
+				>
+					{tabs.map(tab => {
+						const visible = visibleTabIds({ activeTabId, split }).includes(tab.id);
+						const indexedSession =
+							(tab.sessionPath ? sessionsByPath.get(tab.sessionPath) : undefined) ??
+							(tab.sessionId ? sessionsById.get(tab.sessionId) : undefined);
+						const label = tabDisplayTitle(tab, tabs, indexedSession, t("sidebar.untitled"));
+						const workspaceLabel =
+							tab.kind === "chat" ? t("sidebar.chats") : (groupAliases[tab.cwd] ?? basename(tab.cwd) ?? tab.cwd);
+						return (
+							<TabChip
+								key={tab.id}
+								tab={tab}
+								active={tab.id === activeTabId}
+								visible={visible}
+								label={label}
+								workspaceLabel={workspaceLabel}
+								confirmingClose={armedCloseTab?.tabId === tab.id}
+								closeNeedsConfirm={tabNeedsCloseConfirm(tab, liveRuntime)}
+								onArmClose={() => armCloseTab(tab.id)}
+								onConfirmClose={() => confirmClose(tab.id)}
+								onCancelClose={cancelCloseTab}
+								onContextMenu={event => setTabMenu({ anchor: anchorFromEvent(event), tabId: tab.id })}
+								onKeyboardNavigate={key => {
+									const index = tabOrder.indexOf(tab.id);
+									const targetIndex =
+										key === "Home"
+											? 0
+											: key === "End"
+												? tabOrder.length - 1
+												: (index + (key === "ArrowLeft" ? -1 : 1) + tabOrder.length) % tabOrder.length;
+									const target = tabOrder[targetIndex];
+									if (target) {
+										void useTabsStore.getState().switchTab(target);
+										requestAnimationFrame(() => document.getElementById(`omp-tab-${target}`)?.focus());
+									}
+								}}
+							/>
+						);
+					})}
+				</div>
 				{actionTabId && (
 					<button
 						type="button"

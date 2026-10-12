@@ -13,7 +13,8 @@ export function ConversationNavigator({ activeIndex, anchors, onNavigate }: Conv
 	const t = useT();
 	const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 	const buttonsRef = useRef<Array<HTMLButtonElement | null>>([]);
-	if (anchors.length < 2) return null;
+	// A map earns its place once there is somewhere to jump to and back from.
+	if (anchors.length < 3) return null;
 
 	const density = anchors.length > 64 ? "is-compact" : anchors.length > 32 ? "is-dense" : undefined;
 	const focusMarker = (index: number) => {

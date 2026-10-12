@@ -133,6 +133,17 @@ function buttonWithText(text: string): TestElement | undefined {
 	return buttons.find(button => button.textContent?.trim().startsWith(text));
 }
 
+/** The composer's secondary inputs (attach, editor, history) live behind its "+" menu. */
+async function chooseFromAddMenu(label: string): Promise<void> {
+	const add = document.querySelector('button[aria-label="Add to message"]') as unknown as TestElement | null;
+	if (!add) throw new Error("add menu trigger missing");
+	await click(add);
+	const items = Array.from(document.querySelectorAll('[role="menuitem"]')) as unknown as TestElement[];
+	const item = items.find(candidate => candidate.textContent?.trim().startsWith(label));
+	if (!item) throw new Error(`add menu item missing: ${label}`);
+	await click(item);
+}
+
 function setWindowWidth(width: number): void {
 	Object.defineProperty(window, "innerWidth", { configurable: true, value: width });
 }
@@ -534,11 +545,9 @@ describe("InputArea prompt history", () => {
 		expect(useInputHistoryStore.getState().entries).toEqual([]);
 	});
 
-	it("opens history search from the visible composer toolbar", async () => {
+	it("opens history search from the composer's add menu", async () => {
 		await mount();
-		const history = document.querySelector('button[aria-label="History"]') as unknown as TestElement | null;
-		expect(history).not.toBeNull();
-		await click(history as TestElement);
+		await chooseFromAddMenu("History");
 		expect(document.querySelector('[role="dialog"][aria-label="History"]')).not.toBeNull();
 	});
 });
@@ -547,11 +556,6 @@ describe("InputArea draft editor", () => {
 	// ⌃G alone was undiscoverable: the full-screen editor had no visible entry
 	// point, and both entries must hand it the expanded draft — a marker pasted
 	// into the editor would come back as literal "[Paste #1…]" text.
-	function draftEditorButton(): TestElement {
-		const button = document.querySelector("button[data-draft-editor-trigger]") as unknown as TestElement | null;
-		if (!button) throw new Error("draft editor trigger missing");
-		return button;
-	}
 
 	async function pressCtrlG(): Promise<void> {
 		const textarea = findTextarea();
@@ -575,11 +579,11 @@ describe("InputArea draft editor", () => {
 		);
 	}
 
-	it("opens the editor from the toolbar with paste markers resolved", async () => {
+	it("opens the editor from the add menu with paste markers resolved", async () => {
 		await mount();
 		const blob = storePaste("alpha\nbravo");
 		await typeInto(findTextarea(), `summary ${pasteMarkerText(blob.id, blob.content)}`);
-		await click(draftEditorButton());
+		await chooseFromAddMenu(translate("editor.title"));
 
 		expect(useUiStore.getState().composerEditorOpen).toBe(true);
 		expect(useUiStore.getState().composerEditorInitial).toBe("summary alpha\nbravo");

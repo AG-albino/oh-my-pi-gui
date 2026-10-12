@@ -16,7 +16,7 @@ import type { SidecarPool } from "./sidecar-pool";
 import { nextSnowflake } from "./snowflake";
 
 export type SpawnTabDeps = {
-	sidecarPool: Pick<SidecarPool, "sessionOwner" | "atCap" | "acquire">;
+	sidecarPool: Pick<SidecarPool, "sessionOwner" | "acquire">;
 	sessionIndex: Pick<SessionIndex, "kindFor">;
 	/** Caller's cwd resolution (ipc.ts's cwdFor, falling back to the app's initial cwd). */
 	fallbackCwd: () => string;
@@ -44,7 +44,6 @@ export async function spawnTabForWindow(
 		}
 		kind = fileKind;
 	}
-	if (deps.sidecarPool.atCap) return null;
 	const cwd = payload.defaultWorkspace
 		? deps.defaultWorkspace()
 		: typeof payload?.cwd === "string" && payload.cwd.length > 0

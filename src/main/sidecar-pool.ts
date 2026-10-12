@@ -1,11 +1,10 @@
 /**
- * Pool of per-tab sidecar processes, bounded at a hard cap.
+ * Pool of per-tab sidecar processes.
  *
- * Each TAB owns one SidecarManager; a window holds N tabs. The pool enforces
- * the concurrency cap atomically (a slot is reserved synchronously before the
- * async spawn, so N concurrent acquires cannot overshoot — and the cap now
- * counts tabs across all windows), wires each sidecar's events to its owning
- * window, and releases the sidecar (listeners first, then dispose) when its
+ * Each TAB owns one SidecarManager; a window holds N tabs. There is no tab
+ * cap — a tab's process is spawned only once the tab is shown (deferStart),
+ * so idle tabs cost nothing. The pool wires each sidecar's events to its
+ * owning window, and releases the sidecar (listeners first, then dispose) when its
  * tab closes or its window closes.
  *
  * Event routing: the full event channels (events batch, status, subagent,
@@ -34,10 +33,12 @@ import {
 	type IpcSessionOwner,
 	type IpcSetTabViewPayload,
 	type IpcTabInfo,
+	type IpcTabRetry,
 	type IpcTabStatusPayload,
 	type IpcTabWorktree,
 } from "../shared/ipc-types";
 import {
+	type AgentMessage,
 	type AgentSessionEvent,
 	type AvailableCommand,
 	BLOCKING_UI_METHODS,
@@ -94,6 +95,18 @@ interface PoolEntry {
 	awaitingSessionSettled: boolean;
 	/** Automatic transcript compaction state once observed — true blocks session mutation. */
 	compacting?: boolean;
+	/**
+	 * Outcome a background tab's chip must show without full events: an
+	 * auto-retry in flight, or a last run that ended in a provider error.
+	 * Cleared when the next run starts.
+	 */
+	attention?: "retrying" | "failed";
+	/** The error behind `attention: "failed"`, for the background-failure notice. */
+	attentionDetail?: string;
+	/** An outcome was sent at least once, so its clearing must be sent too. */
+	attentionShown?: boolean;
+	/** The auto-retry in flight, so a tab shown mid-saga renders its retry row. */
+	retry?: IpcTabRetry;
 	/** Session meta cached from session_info_update (TAB_STATUS / GET_TABS). */
 	sessionId?: string;
 	/**
@@ -137,14 +150,6 @@ export class SidecarPool {
 	 * response or when the owning entry is released.
 	 */
 	#requestOwners = new Map<string, PoolEntry>();
-	/**
-	 * Synchronously-reserved spawn slots. An acquire claims one before the
-	 * (synchronous-but-fragile) SidecarManager.start(), and releases it if the
-	 * start throws. This is what makes the cap atomic: a concurrent acquire
-	 * sees the reservation and is refused even before the child exists.
-	 */
-	#reserved = 0;
-	readonly #max: number;
 	readonly #factory: SidecarFactory;
 	/** Suppress partial snapshots while a saved layout is being reconstructed. */
 	#restoringWindows = new Set<number>();
@@ -160,23 +165,19 @@ export class SidecarPool {
 	/** Main-process persistence hook. The primary window installs this at startup. */
 	onWindowTabsChanged: ((win: BrowserWindow, layout: PersistedTabLayout | null) => void) | null = null;
 
-	constructor(factory: SidecarFactory, max = 10) {
+	constructor(factory: SidecarFactory) {
 		this.#factory = factory;
-		this.#max = max;
 	}
 
 	get size(): number {
-		return this.#entries.size + this.#reserved;
-	}
-
-	/** True when the pool is full — single source of truth for the cap. */
-	get atCap(): boolean {
-		return this.size >= this.#max;
+		return this.#entries.size;
 	}
 
 	/**
-	 * Spawn + bind a sidecar for `cwd` to `win` as a tab. Returns null at the
-	 * cap. `tabId` defaults to a fresh snowflake (the window's initial sidecar
+	 * Spawn + bind a sidecar for `cwd` to `win` as a tab. Returns null when the
+	 * sidecar could not be created. There is no tab cap: restored and
+	 * background tabs are deferred, so only tabs someone has shown hold a
+	 * process. `tabId` defaults to a fresh snowflake (the window's initial sidecar
 	 * is minted here too); `sessionPath` resumes that session on first start.
 	 * `kind` defaults to "agent"; "chat" spawns a tool-free conversation.
 	 * The first tab of a window becomes its active tab; later tabs start in
@@ -202,8 +203,6 @@ export class SidecarPool {
 		deferStart = false,
 		title?: string,
 	): SidecarManager | null {
-		if (this.atCap) return null;
-		this.#reserved++;
 		try {
 			const sidecar = this.#factory(cwd, kind, fresh);
 			const entry: PoolEntry = {
@@ -243,10 +242,6 @@ export class SidecarPool {
 			return sidecar;
 		} catch {
 			return null;
-		} finally {
-			// Release the synchronous reservation exactly once: on success the
-			// slot is now the live entry; on failure the pool never held it.
-			this.#reserved--;
 		}
 	}
 
@@ -275,6 +270,8 @@ export class SidecarPool {
 				entry.running = false;
 				entry.awaitingSessionSettled = false;
 				entry.compacting = undefined;
+				entry.retry = undefined;
+				if (entry.attention === "retrying") entry.attention = undefined;
 			}
 			forwardToWindow(win, IPC_EVENTS.TAB_STATUS, tabStatusPayload(entry));
 		});
@@ -314,17 +311,44 @@ export class SidecarPool {
 		sidecar.on("events", (events: AgentSessionEvent[]) => {
 			const wasBusy = entry.running || entry.compacting === true;
 			const wasPlaceholder = entry.placeholder;
+			const wasAttention = entry.attention;
+			const wasRetry = entry.retry;
 			for (const event of events) {
 				if (event.type === "agent_start") {
 					entry.running = true;
 					entry.placeholder = false;
+					// An auto-retry re-enters through agent_start; only a run outside a
+					// retry saga starts with a clean slate. The saga ends on auto_retry_end.
+					if (!entry.retry) {
+						entry.attention = undefined;
+						entry.attentionDetail = undefined;
+					}
 				} else if (event.type === "agent_end") {
 					if (!entry.awaitingSessionSettled) entry.running = false;
+					if (event.isTerminal !== false && !entry.retry) settleAttention(entry, event.messages);
+				} else if (event.type === "auto_retry_start") {
+					entry.attention = "retrying";
+					entry.retry = {
+						attempt: event.attempt,
+						maxAttempts: event.maxAttempts,
+						delayMs: event.delayMs,
+						errorMessage: event.errorMessage,
+						startedAt: Date.now(),
+					};
+				} else if (event.type === "auto_retry_end") {
+					entry.attention = event.success ? undefined : "failed";
+					entry.attentionDetail = event.success ? undefined : event.finalError;
+					entry.retry = undefined;
 				} else if (event.type === "auto_compaction_start") entry.compacting = true;
 				else if (event.type === "auto_compaction_end") entry.compacting = false;
 			}
 			const busy = entry.running || entry.compacting === true;
-			if (busy !== wasBusy || entry.placeholder !== wasPlaceholder) {
+			if (
+				busy !== wasBusy ||
+				entry.placeholder !== wasPlaceholder ||
+				entry.attention !== wasAttention ||
+				entry.retry !== wasRetry
+			) {
 				forwardToWindow(win, IPC_EVENTS.TAB_STATUS, tabStatusPayload(entry));
 			}
 			if (entry.placeholder !== wasPlaceholder) this.#notifyWindowTabsChanged(win);
@@ -793,6 +817,19 @@ export class SidecarPool {
 }
 
 /** TAB_STATUS push / GET_TABS item: full tab snapshot incl. cached session meta. */
+/** A terminal agent_end decides the run's outcome from its final assistant reply. */
+function settleAttention(entry: PoolEntry, messages: AgentMessage[] | undefined): void {
+	const last = messages?.findLast(message => message.role === "assistant");
+	if (last?.stopReason === "error") {
+		entry.attention = "failed";
+		entry.attentionDetail = typeof last.errorMessage === "string" ? last.errorMessage : entry.attentionDetail;
+	} else if (entry.attention === "retrying" || last) {
+		// A settled run that did not fail: any retry saga ended in its favor.
+		entry.attention = undefined;
+		entry.attentionDetail = undefined;
+	}
+}
+
 function tabStatusPayload(entry: PoolEntry): IpcTabStatusPayload {
 	const payload: IpcTabStatusPayload = {
 		tabId: entry.tabId,
@@ -808,5 +845,13 @@ function tabStatusPayload(entry: PoolEntry): IpcTabStatusPayload {
 	if (entry.sessionId !== undefined) payload.sessionId = entry.sessionId;
 	if (entry.title !== undefined) payload.title = entry.title;
 	if (entry.worktree !== undefined) payload.worktree = entry.worktree;
+	// Once a tab has had an outcome to show, keep sending it (null = cleared)
+	// so the chip drops a stale retry/failure mark.
+	if (entry.attention !== undefined || entry.attentionDetail !== undefined || entry.attentionShown) {
+		entry.attentionShown = true;
+		payload.attention = entry.attention ?? null;
+		payload.retry = entry.retry ?? null;
+	}
+	if (entry.attentionDetail !== undefined) payload.attentionDetail = entry.attentionDetail;
 	return payload;
 }

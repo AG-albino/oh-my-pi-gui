@@ -225,55 +225,55 @@ function SidebarWithRecency() {
 }
 
 describe("Sidebar menus and pinned ordering", () => {
-	it("keeps session tools visible and folds app-wide tools under More", async () => {
+	it("keeps session tools visible and opens app-wide tools from the More menu", async () => {
 		installMockOmp(LIST);
 		seedStores();
 		await mount(<Sidebar />);
 
 		const navigation = container.querySelector("[data-sidebar-navigation]");
-		const group = () => navigation!.querySelector(".omp-sidebar-group") as unknown as Element;
+		for (const label of ["New task", "Commands", "Agent Hub", "PR Center", "More"]) {
+			expect(navigation?.textContent).toContain(label);
+		}
+		// App-wide tools do not compete with the task list until asked for.
+		expect(navigation?.textContent).not.toContain("Providers & login");
+		expect(document.body.querySelector('[role="menu"]')).toBeNull();
+
+		const more = navigation!.querySelector('[aria-label="Show more navigation"]');
+		await fire(more, "onClick");
+		expect(more?.getAttribute("aria-expanded")).toBe("true");
+		const labels = menuItemLabels();
 		for (const label of [
-			"Commands",
 			"OMP capabilities",
-			"Agent Hub",
 			"Providers & login",
 			"Usage & quotas",
 			"Session stats",
-			"PR Center",
-			"Open workspace",
 			"Keyboard shortcuts",
 		]) {
-			expect(navigation?.textContent).toContain(label);
+			expect(labels.some(item => item.includes(label))).toBe(true);
 		}
-		// Primary items sit outside the fold; app-wide tools start folded away.
-		expect(group().textContent).not.toContain("Agent Hub");
-		expect(group().textContent).toContain("Providers & login");
-		expect(group().getAttribute("aria-hidden")).toBe("true");
-		const more = navigation!.querySelector('[aria-label="Show more navigation"]');
-		await fire(more, "onClick");
-		expect(group().getAttribute("aria-hidden")).toBe("false");
-		expect(more?.getAttribute("aria-expanded")).toBe("true");
-
-		const capabilities = [...navigation!.querySelectorAll("button")].find(button =>
+		const capabilities = [...document.body.querySelectorAll('[role="menu"] button')].find(button =>
 			(button.textContent ?? "").includes("OMP capabilities"),
 		);
-		if (!capabilities) throw new Error("Capabilities navigation item missing");
-		await fire(capabilities, "onClick");
+		await fire(capabilities as Element, "onClick");
 		expect(useUiStore.getState().settingsOpen).toBe(true);
 		expect(useUiStore.getState().settingsTab).toBe("capabilities");
+		expect(document.body.querySelector('[role="menu"]')).toBeNull();
+
+		await fire(more, "onClick");
+		const hotkeys = [...document.body.querySelectorAll('[role="menu"] button')].find(button =>
+			(button.textContent ?? "").includes("Keyboard shortcuts"),
+		);
+		await fire(hotkeys as Element, "onClick");
+		expect(useUiStore.getState().hotkeysOpen).toBe(true);
+
 		const commandCenter = navigation?.querySelector('button[data-command-center-entry="true"]');
-		expect(commandCenter?.textContent).toContain("⌘K / ⌃K");
+		// The hover hint names the first configured chord; the tooltip lists them all.
+		expect(commandCenter?.textContent).toContain("⌘K");
+		expect(commandCenter?.getAttribute("title")).toContain("⌘K / ⌃K");
 		await act(async () => useUiStore.setState({ keymapOverrides: { palette: ["⌘⇧K"] } }));
 		expect(commandCenter?.textContent).toContain("⇧⌘K");
 		expect(commandCenter?.textContent).not.toContain("⌃K");
 		await act(async () => useUiStore.setState({ keymapOverrides: {} }));
-
-		const hotkeys = [...navigation!.querySelectorAll("button")].find(button =>
-			(button.textContent ?? "").includes("Keyboard shortcuts"),
-		);
-		if (!hotkeys) throw new Error("Keyboard shortcuts navigation item missing");
-		await fire(hotkeys, "onClick");
-		expect(useUiStore.getState().hotkeysOpen).toBe(true);
 
 		await act(async () => useUiStore.setState({ settingsOpen: false }));
 		const settings = container.querySelector("[data-sidebar-settings]");
@@ -345,18 +345,15 @@ describe("Sidebar menus and pinned ordering", () => {
 		});
 		await mount(<Sidebar />);
 
-		const modeButton = container.querySelector('[aria-label="Choose workspace mode"], [aria-label="选择工作模式"]');
-		await fire(modeButton, "onClick");
-
-		const labels = menuItemLabels();
-		expect(labels.some(label => label.includes("Build, debug, and ship in a project"))).toBe(true);
-		expect(labels.some(label => label.includes("Full agent in your default workspace"))).toBe(true);
-		expect(labels).toHaveLength(2);
-
-		const workItem = [...document.body.querySelectorAll('[role="menu"] button')].find(button =>
-			(button.textContent ?? "").includes("Full agent in your default workspace"),
-		);
-		await fire(workItem as Element, "onClick");
+		const modeSwitch = container.querySelector('[aria-label="Choose workspace mode"]');
+		const modes = [...(modeSwitch?.querySelectorAll("button") ?? [])];
+		expect(modes.map(button => button.getAttribute("title"))).toEqual([
+			"Build, debug, and ship in a project",
+			"Full agent in your default workspace",
+		]);
+		const workItem = modes.find(button => (button.textContent ?? "").includes("Work"));
+		await fire(workItem ?? null, "onClick");
+		expect(workItem?.getAttribute("aria-pressed")).toBe("true");
 		expect(container.querySelector("[data-sidebar-new-chat]")).toBeNull();
 		await fire(container.querySelector("[data-sidebar-new-agent]"), "onClick");
 
@@ -450,16 +447,18 @@ describe("Sidebar menus and pinned ordering", () => {
 		expect(signal().className).toContain("omp-signal-light--active");
 	});
 
-	it("aligns workspace and session titles with folder, chat, and reserved icon slots", async () => {
-		installMockOmp(LIST);
+	it("lines every session title up under its group icon, with the status light in that slot", async () => {
+		installMockOmp([...LIST, session("/work/alpha/chat.jsonl", "/work/alpha", { kind: "chat" })]);
 		seedStores();
 		await mount(<Sidebar />);
 
 		expect(container.querySelectorAll("[data-sidebar-workspace-icon]").length).toBeGreaterThan(0);
-		const chatRow = container.querySelector('[data-session-kind="chat"]');
+		const chatRow = container.querySelector('[data-session-group="__chats__"] [data-session-kind="chat"]');
 		const groupedAgentRow = container.querySelector('[data-session-group="/work/alpha"] [data-session-kind="agent"]');
-		expect(chatRow?.querySelector("svg[data-sidebar-session-icon]")).not.toBeNull();
-		expect(groupedAgentRow?.querySelector("span[data-sidebar-session-icon]")).not.toBeNull();
+		for (const row of [chatRow, groupedAgentRow]) {
+			expect(row).not.toBeNull();
+			expect(row?.querySelector("[data-sidebar-session-icon] .omp-signal-light")).not.toBeNull();
+		}
 	});
 
 	it("right-click on a workspace header opens the agent-only 5-item group menu", async () => {
@@ -624,9 +623,8 @@ describe("Sidebar menus and pinned ordering", () => {
 		await mount(<Sidebar />);
 
 		expect(container.querySelector("[data-chat-section]")).not.toBeNull();
-		expect(
-			container.querySelector('[aria-label="Choose workspace mode"], [aria-label="选择工作模式"]')?.textContent,
-		).toContain("Code");
+		const pressed = container.querySelector('[aria-label="Choose workspace mode"] [aria-pressed="true"]');
+		expect(pressed?.textContent).toContain("Code");
 	});
 
 	it("keeps the active task protected while it is compacting", async () => {

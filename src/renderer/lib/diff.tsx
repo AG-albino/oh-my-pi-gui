@@ -65,6 +65,9 @@ function parseDiffRows(text: string): DiffRow[] {
 			continue;
 		}
 		if (!sawHunk && /^(---|\+\+\+) \S/.test(raw)) continue;
+		// Git extended headers (blob ids, file modes) describe the file, not its lines.
+		if (!sawHunk && /^(index [0-9a-f]+\.\.[0-9a-f]+|(new|deleted) file mode |old mode |new mode )/.test(raw))
+			continue;
 		if (raw.length === 0) {
 			// Blank rows are gap markers in the numbered wire format; in plain
 			// diffs they only appear as a trailing split artifact.

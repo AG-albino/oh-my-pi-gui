@@ -22,8 +22,8 @@ interface Harness {
 	sessionOwner: Mock<() => { tabId: string; winId: number } | null>;
 }
 
-function harness(options: { atCap?: boolean } = {}): Harness {
-	const acquire = vi.fn(() => ({}) as SidecarManager);
+function harness(options: { acquireFails?: boolean } = {}): Harness {
+	const acquire = vi.fn(() => (options.acquireFails ? null : ({} as SidecarManager)) as SidecarManager);
 	const kindFor = vi.fn(async (_path: string): Promise<SessionKind> => "agent");
 	const sessionOwner = vi.fn(() => null);
 	return {
@@ -33,9 +33,8 @@ function harness(options: { atCap?: boolean } = {}): Harness {
 		deps: {
 			sidecarPool: {
 				sessionOwner,
-				atCap: options.atCap ?? false,
 				acquire,
-			} as unknown as Pick<SidecarPool, "sessionOwner" | "atCap" | "acquire">,
+			} as unknown as Pick<SidecarPool, "sessionOwner" | "acquire">,
 			sessionIndex: { kindFor },
 			fallbackCwd: () => "/fallback",
 			defaultWorkspace: () => "/default-workspace",
@@ -109,12 +108,12 @@ describe("spawnTabForWindow refusal contracts", () => {
 		expect(acquire).not.toHaveBeenCalled();
 	});
 
-	it("returns null at the pool cap", async () => {
-		const { deps, acquire } = harness({ atCap: true });
+	it("returns null when the sidecar cannot be created", async () => {
+		const { deps, acquire } = harness({ acquireFails: true });
 		const result = await spawnTabForWindow(deps, fakeWindow(), {});
 
 		expect(result).toBeNull();
-		expect(acquire).not.toHaveBeenCalled();
+		expect(acquire).toHaveBeenCalledTimes(1);
 	});
 
 	it("fresh tabs bypass auto-resume, spawn agent by default, and never consult kindFor", async () => {

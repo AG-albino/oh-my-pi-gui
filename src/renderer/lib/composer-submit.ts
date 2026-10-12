@@ -31,6 +31,9 @@ export type ComposerSubmit =
 	| { kind: "clear" }
 	/** A GUI-native command opened/executed its affordance synchronously. */
 	| { kind: "handled" }
+	/** Exact `/compact` — its own RPC; a refusal ("nothing to compact") is an
+	 * outcome to report, not a lost message to restore. */
+	| { kind: "compact"; request: () => Promise<RpcResponse> }
 	/** Dispatch this lazy request; on success call {@link settleComposerResponse}. */
 	| { kind: "send"; request: () => Promise<RpcResponse> };
 
@@ -120,7 +123,7 @@ export function planComposerSubmit(input: {
 	// exact command through its dedicated RPC so it gets the compact timeout
 	// instead of timing out as an 8s prompt while still blocking the RPC queue.
 	if (isSlashCommand && message.trim() === "/compact") {
-		return { kind: "send", request: () => rpc.compact() };
+		return { kind: "compact", request: () => rpc.compact() };
 	}
 	const guiHandled = isSlashCommand ? runGuiOnlyBuiltin(message, commands) : undefined;
 	if (guiHandled !== undefined) return { kind: guiHandled ? "handled" : "blocked" };

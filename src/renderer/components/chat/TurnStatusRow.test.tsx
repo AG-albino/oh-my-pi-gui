@@ -48,7 +48,6 @@ describe("TurnStatusRow", () => {
 
 		const status = container.querySelector('[role="status"]');
 		expect(status?.textContent).toBe("Waiting for model response…");
-		expect(container.textContent).toMatch(/Waiting for model response… \d+s/);
-		expect(container.querySelectorAll(".animate-spin")).toHaveLength(1);
+		expect(container.textContent).toMatch(/Waiting for the model\s*\d+s/);
 	});
 });

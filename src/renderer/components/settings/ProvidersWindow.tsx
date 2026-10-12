@@ -339,7 +339,7 @@ export function ProvidersWindow({ pollMs = 2_500 }: { pollMs?: number }) {
 			<Modal open={open} onClose={close} title={t("providers.title")} size="lg">
 				<div className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto">
 					<div className="flex items-center justify-between">
-						<span className="text-omp-sm font-semibold uppercase tracking-wider text-[var(--omp-muted)]">
+						<span className="text-omp-sm font-semibold text-[var(--omp-muted)]">
 							{t("providers.authenticated")}
 						</span>
 						<div className="flex items-center gap-1.5">
@@ -437,7 +437,7 @@ export function ProvidersWindow({ pollMs = 2_500 }: { pollMs?: number }) {
 
 					{unauthenticated.length > 0 && (
 						<>
-							<span className="text-omp-sm font-semibold uppercase tracking-wider text-[var(--omp-muted)]">
+							<span className="text-omp-sm font-semibold text-[var(--omp-muted)]">
 								{t("providers.available")}
 							</span>
 							<div className="flex flex-col gap-2">

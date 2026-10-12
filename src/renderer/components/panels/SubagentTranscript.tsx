@@ -141,9 +141,7 @@ export const SubagentTranscript = memo(function SubagentTranscript({ agent }: { 
 				if (!text) return null;
 				return (
 					<div className="rounded-sm border-l-2 border-(--omp-border-muted) px-2 py-1" key={index}>
-						<div className="mb-0.5 text-omp-xxs font-semibold tracking-wider text-(--omp-dim) uppercase">
-							{message.role}
-						</div>
+						<div className="mb-0.5 text-omp-xxs font-semibold text-(--omp-dim)">{message.role}</div>
 						<div className="text-omp-sm leading-snug break-words whitespace-pre-wrap text-(--omp-muted)">
 							{text.length > 1200 ? `${text.slice(0, 1200)}…` : text}
 						</div>

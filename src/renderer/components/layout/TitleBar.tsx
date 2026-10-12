@@ -1,7 +1,5 @@
 import {
 	ChevronRight,
-	Clock3,
-	Coins,
 	Command,
 	Database,
 	FolderOpen,
@@ -10,12 +8,15 @@ import {
 	Info,
 	MoreHorizontal,
 	PanelLeft,
+	PanelRight,
+	ScrollText,
 	Share2,
 	Wrench,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { SessionStats } from "../../../shared/rpc-types";
 import { useSessionList } from "../../hooks/use-session-list";
+import { useWorkingTreeChangeCount } from "../../hooks/use-working-tree-changes";
 import { basename, cx, formatCost, formatDuration, formatPercent, formatTokens } from "../../lib/format";
 import { useT } from "../../lib/i18n";
 import { isImeKeyEvent } from "../../lib/ime";
@@ -57,6 +58,8 @@ export function TitleBar() {
 	const tools = useToolsStore(s => s.activeTools);
 	const sidebarVisible = useUiStore(s => s.sidebarVisible);
 	const toggleSidebar = useUiStore(s => s.toggleSidebar);
+	const panelVisible = useUiStore(s => s.panelVisible);
+	const togglePanel = useUiStore(s => s.togglePanel);
 	const openCommandPalette = useUiStore(s => s.openCommandPalette);
 	const openUsage = useUiStore(s => s.openUsage);
 	const openStatsDashboard = useUiStore(s => s.openStatsDashboard);
@@ -67,6 +70,7 @@ export function TitleBar() {
 	const openSessionInfo = useUiStore(s => s.openSessionInfo);
 	const openBranchPicker = useUiStore(s => s.openBranchPicker);
 	const openSessionTree = useUiStore(s => s.openSessionTree);
+	const openLogs = useUiStore(s => s.openLogs);
 	const { sessions } = useSessionList("local");
 	const projectName = !isChat && cwd ? basename(cwd) : t("titlebar.openProject");
 
@@ -146,7 +150,23 @@ export function TitleBar() {
 		now,
 	});
 
-	const hasUsage = usedTokens > 0 || executionDuration > 0;
+	const usedCost = visibleStats ? (visibleStats.history?.cost ?? visibleStats.cost) : 0;
+	const metricParts = [
+		usedTokens > 0 ? t("titlebar.metric.tokensShort", { count: formatTokens(usedTokens) }) : null,
+		usedCost > 0 ? formatCost(usedCost, usedCost < 1 ? 3 : 2) : null,
+		executionDuration > 0 ? formatDuration(executionDuration) : null,
+	].filter((part): part is string => part !== null);
+	const metricsTitle = [
+		`${t(visibleStats?.history ? "titlebar.metric.historyTokens" : "titlebar.metric.tokens")}: ${visibleStats ? formatTokens(usedTokens) : "—"}`,
+		`${t(visibleStats?.history ? "titlebar.metric.historyCost" : "titlebar.metric.cost")}: ${visibleStats ? formatCost(usedCost, 4) : "—"}`,
+		`${t("titlebar.metric.cacheHit")}: ${formatPercent(cacheHit, 0)}`,
+		`${t("titlebar.metric.duration")}: ${formatDuration(executionDuration)}`,
+	].join("\n");
+	const changeCount = useWorkingTreeChangeCount(!isChat);
+	const reviewLabel =
+		changeCount && changeCount > 0
+			? t("titlebar.review.changes", { count: changeCount, plural: changeCount === 1 ? "" : "s" })
+			: t("titlebar.togglePanel");
 
 	const commitName = () => {
 		const name = draft.trim();
@@ -279,10 +299,20 @@ export function TitleBar() {
 				openStatsDashboard();
 			},
 		},
+		{
+			id: "logs",
+			label: t("cmd.logs"),
+			description: t("cmd.logs.desc"),
+			icon: ScrollText,
+			onSelect: () => {
+				setActionsMenu(null);
+				openLogs();
+			},
+		},
 	];
 
 	return (
-		<header className="omp-titlebar drag-region flex h-12 min-w-0 shrink-0 items-center gap-1 overflow-hidden border-b border-[var(--omp-border-muted)] bg-[var(--omp-titlebar-bg)] px-2.5">
+		<header className="omp-titlebar drag-region flex h-12 min-w-0 shrink-0 items-center gap-1 overflow-hidden bg-[var(--omp-titlebar-bg)] px-2.5">
 			<button
 				type="button"
 				aria-label={t("titlebar.toggleSidebar")}
@@ -374,32 +404,20 @@ export function TitleBar() {
 
 			<div className="flex-1" />
 
-			{/* A session with nothing spent yet shows no figures — a row of zeros is noise. */}
-			{hasUsage && (
-				<div className="omp-session-metrics no-drag flex shrink-0 items-center gap-3 font-mono text-omp-sm tabular-nums text-[var(--omp-muted)]">
-					<span
-						className="flex items-center gap-1"
-						title={t(visibleStats?.history ? "titlebar.metric.historyTokens" : "titlebar.metric.tokens")}
-					>
-						<Database aria-hidden="true" size={14} />
-						{visibleStats ? formatTokens(visibleStats.history?.totalTokens ?? visibleStats.tokens.total) : "—"}
-					</span>
-					<span
-						className="flex items-center gap-1"
-						title={t(visibleStats?.history ? "titlebar.metric.historyCost" : "titlebar.metric.cost")}
-					>
-						<Coins aria-hidden="true" size={14} />
-						{visibleStats ? formatCost(visibleStats.history?.cost ?? visibleStats.cost, 4) : "—"}
-					</span>
-					<span className="flex items-center gap-1" title={t("titlebar.metric.cacheHit")}>
-						<Gauge aria-hidden="true" size={14} />
-						{formatPercent(cacheHit, 0)}
-					</span>
-					<span className="flex items-center gap-1" title={t("titlebar.metric.duration")}>
-						<Clock3 aria-hidden="true" size={14} />
-						{executionDuration > 0 ? formatDuration(executionDuration) : t("time.secondsShort", { count: 0 })}
-					</span>
-				</div>
+			{/* One quiet readout: only figures that carry information are printed
+			    (a row of zeros is noise); the full breakdown is in the tooltip. */}
+			{metricParts.length > 0 && (
+				<span
+					className="omp-session-metrics no-drag flex shrink-0 items-center gap-1.5 px-1.5 font-mono text-omp-sm tabular-nums text-[var(--omp-dim)]"
+					title={metricsTitle}
+				>
+					{metricParts.map((part, index) => (
+						<span className="flex items-center gap-1.5" key={part}>
+							{index > 0 && <span aria-hidden="true">·</span>}
+							{part}
+						</span>
+					))}
+				</span>
 			)}
 			<button
 				type="button"
@@ -426,6 +444,26 @@ export function TitleBar() {
 					items={actionMenuItems}
 				/>
 			)}
+			{/* The review drawer's entry says why it is worth opening: how many
+			    files the checkout has changed. */}
+			<button
+				type="button"
+				aria-label={reviewLabel}
+				aria-pressed={panelVisible}
+				onClick={togglePanel}
+				title={reviewLabel}
+				className={cx(
+					"omp-review-toggle no-drag omp-pressable flex h-8 min-w-8 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 text-[var(--omp-muted)] hover:bg-[var(--omp-selected-bg)] hover:text-[var(--omp-text)]",
+					panelVisible && "bg-[var(--omp-selected-bg)] text-[var(--omp-text)]",
+				)}
+			>
+				<PanelRight size={17} />
+				{changeCount != null && changeCount > 0 && (
+					<span className="omp-review-count font-mono text-omp-sm tabular-nums" aria-hidden="true">
+						{changeCount > 99 ? "99+" : changeCount}
+					</span>
+				)}
+			</button>
 			<WorkspaceDialog open={workspaceOpen} onClose={() => setWorkspaceOpen(false)} />
 		</header>
 	);

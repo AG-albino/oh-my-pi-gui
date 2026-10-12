@@ -2,7 +2,6 @@ import {
 	BarChart3,
 	Bot,
 	BriefcaseBusiness,
-	ChevronDown,
 	ChevronRight,
 	Code2,
 	Coins,
@@ -18,7 +17,6 @@ import {
 	MessageSquareWarning,
 	MoreHorizontal,
 	Palette,
-	PanelRight,
 	Pencil,
 	Pin,
 	PinOff,
@@ -32,12 +30,21 @@ import {
 	SquareTerminal,
 	Trash2,
 } from "lucide-react";
-import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	type MouseEvent as ReactMouseEvent,
+	type ReactNode,
+	type PointerEvent as ReactPointerEvent,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type { SessionInfo } from "../../../shared/ipc-types";
 import { useAwaitingConfirmation } from "../../hooks/use-awaiting-confirmation";
 import { useSessionList } from "../../hooks/use-session-list";
 import { dropSessionNow } from "../../hooks/use-session-switch";
-import { basename, cx } from "../../lib/format";
+import { basename, cx, formatTimeAgo } from "../../lib/format";
 import { useT } from "../../lib/i18n";
 import { isImeKeyEvent } from "../../lib/ime";
 import { compileKeymap, KEYMAP_ACTIONS, onEscape } from "../../lib/keymap";
@@ -84,28 +91,6 @@ type PendingDelete = { kind: "session"; session: SessionInfo } | { kind: "group"
 
 type SidebarMode = "code" | "work";
 
-const NAVIGATION_MORE_KEY = "omp.sidebar.navigationMore";
-
-/** Whether the "More" navigation group is open — a per-window convenience, folded by default. */
-function useNavigationMoreOpen(): [boolean, (open: boolean) => void] {
-	const [open, setOpen] = useState(() => {
-		try {
-			return window.localStorage.getItem(NAVIGATION_MORE_KEY) === "1";
-		} catch {
-			return false;
-		}
-	});
-	const update = useCallback((next: boolean) => {
-		setOpen(next);
-		try {
-			window.localStorage.setItem(NAVIGATION_MORE_KEY, next ? "1" : "0");
-		} catch {
-			// Storage unavailable — the choice lasts for this window only.
-		}
-	}, []);
-	return [open, update];
-}
-
 function modifiedAt(session: SessionInfo): number {
 	const timestamp = Date.parse(session.modified);
 	return Number.isFinite(timestamp) ? timestamp : 0;
@@ -129,16 +114,16 @@ export function Sidebar() {
 	const tabRpc = useTabRpc();
 	const t = useT();
 	const keymapOverrides = useUiStore(state => state.keymapOverrides);
-	const paletteShortcut = useMemo(
-		() =>
-			[...compileKeymap(KEYMAP_ACTIONS, keymapOverrides)]
-				.filter(([, action]) => action === "palette")
-				.map(([chord]) => chord)
-				.join(" / "),
-		[keymapOverrides],
-	);
+	// The chords bound to each action, as the user configured them.
+	const actionChords = useMemo(() => {
+		const chords = new Map<string, string[]>();
+		for (const [chord, action] of compileKeymap(KEYMAP_ACTIONS, keymapOverrides)) {
+			chords.set(action, [...(chords.get(action) ?? []), chord]);
+		}
+		return chords;
+	}, [keymapOverrides]);
+	const paletteShortcut = (actionChords.get("palette") ?? []).join(" / ");
 	const [mode, setMode] = useState<SidebarMode>("code");
-	const [navigationExpanded, setNavigationExpanded] = useNavigationMoreOpen();
 	const [defaultWorkspace, setDefaultWorkspace] = useState<string | null>(null);
 	const switchPendingTo = useSessionStore(s => s.switchPending?.toId ?? null);
 	// Resizable left rail (mirrors PanelContainer's right-rail drag, but the
@@ -188,7 +173,7 @@ export function Sidebar() {
 	const [workspaceOpen, setWorkspaceOpen] = useState(false);
 	const [renameDraft, setRenameDraft] = useState("");
 	// Mode selector, workspace group context menu, session row context menu.
-	const [modeMenu, setModeMenu] = useState<ContextMenuAnchor | null>(null);
+	const [moreMenu, setMoreMenu] = useState<ContextMenuAnchor | null>(null);
 	const [groupMenu, setGroupMenu] = useState<{ anchor: ContextMenuAnchor; group: WorkspaceGroup } | null>(null);
 	const [sessionMenu, setSessionMenu] = useState<{ anchor: ContextMenuAnchor; session: SessionInfo } | null>(null);
 	// Workspace display alias rename (group header inline input).
@@ -343,7 +328,7 @@ export function Sidebar() {
 	const openSessionInNewWindow = async (session: SessionInfo) => {
 		const ok = await window.omp.sessions.openInNewWindow({ sessionPath: session.path, cwd: session.cwd });
 		if (!ok) {
-			toast({ variant: "warning", message: t("sidebar.parallelCap") });
+			toast({ variant: "error", message: t("sidebar.newWindowFailed") });
 			return;
 		}
 		touchSession(session.path, session.kind === "chat" ? undefined : session.cwd);
@@ -408,7 +393,10 @@ export function Sidebar() {
 		}
 	};
 
-	const renderSessionRow = (session: SessionInfo, nested = false) => {
+	const rowActionButton =
+		"omp-sidebar-action flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[var(--omp-dim)] hover:bg-[var(--omp-selected-bg)] hover:text-[var(--omp-text)]";
+
+	const renderSessionRow = (session: SessionInfo) => {
 		const active = session.id === sessionId;
 		const tabSignal = sessionTabSignal(session);
 		const waiting = active && awaitingConfirmation;
@@ -426,7 +414,9 @@ export function Sidebar() {
 			: (tabSignal?.color ?? (externalRunning ? "var(--omp-accent)" : STATUS_COLOR[session.status]));
 		const title = sessionDisplayTitle(session, t("sidebar.untitled"));
 		const hasActions = !signalActive || !active;
-		const actionsOpen = renamingSessionPath === session.path;
+		const renaming = renamingSessionPath === session.path;
+		const pinned = pinnedSessions.includes(session.path);
+		const recency = recencyForSession(session);
 		return (
 			<div
 				key={session.path}
@@ -442,108 +432,181 @@ export function Sidebar() {
 				data-active={active}
 				data-switch-pending={switchPendingTo === session.id || undefined}
 				data-has-actions={hasActions}
-				data-actions-open={actionsOpen}
+				data-actions-open={renaming}
 				data-session-kind={session.kind ?? "agent"}
 				className={cx(
-					"omp-sidebar-session-row omp-color-fade group cursor-pointer rounded-md border px-2 py-1",
-					active
-						? "border-transparent bg-[var(--omp-selected-bg)]"
-						: "border-transparent hover:bg-[var(--omp-sidebar-item-hover)]",
+					"omp-sidebar-session-row omp-color-fade group flex h-[30px] cursor-pointer items-center rounded-lg px-2",
+					active ? "bg-[var(--omp-selected-bg)]" : "hover:bg-[var(--omp-sidebar-item-hover)]",
 				)}
 			>
-				<div className="flex min-w-0 items-center">
+				{/* The status slot lines titles up under the group icon; idle rows leave it empty. */}
+				<span aria-hidden="true" data-sidebar-session-icon className="mr-2 flex w-4 shrink-0 justify-center">
 					<span
 						role="img"
 						aria-label={signalLabel}
 						title={signalLabel}
-						className={cx("omp-signal-light mr-2", signalActive && "omp-signal-light--active")}
+						className={cx("omp-signal-light", signalActive && "omp-signal-light--active")}
+						data-idle={
+							// Past sessions that simply finished carry no signal; unread
+							// completions (an open tab) and anything live or failed do.
+							(!signalActive &&
+								(signalColor === "var(--omp-dim)" || (tabSignal === null && session.status === "complete"))) ||
+							undefined
+						}
 						style={{ color: signalColor }}
 					/>
-					{session.kind === "chat" ? (
-						<MessageCircle
-							aria-hidden="true"
-							data-sidebar-session-icon
-							size={14}
-							className="mr-2 shrink-0 text-[var(--omp-dim)]"
-						/>
-					) : nested ? (
-						<span aria-hidden="true" data-sidebar-session-icon className="mr-2 w-3.5 shrink-0" />
-					) : null}
-					{pinnedSessions.includes(session.path) && (
-						<Pin
-							size={10}
-							className="mr-1.5 shrink-0 text-[var(--omp-accent)]"
-							aria-label={t("sidebar.pinned")}
-						/>
-					)}
-					{renamingSessionPath === session.path ? (
-						<input
-							ref={renameRef}
-							value={renameDraft}
-							onChange={event => setRenameDraft(event.target.value)}
-							onBlur={event => commitRename(session, event.currentTarget.value)}
-							onKeyDown={event => {
-								if (isImeKeyEvent(event)) return;
-								if (event.key === "Enter") commitRename(session, event.currentTarget.value);
-								onEscape(event, () => setRenamingSessionPath(null));
-							}}
-							onClick={event => event.stopPropagation()}
-							className="min-w-0 flex-1 rounded border border-[var(--omp-input-focus-border)] bg-[var(--omp-input-bg)] px-1.5 py-0.5 text-omp-md font-normal text-[var(--omp-muted)] outline-none"
-						/>
-					) : (
-						<SidebarRowTitle
-							className={cx(
-								"text-omp-md font-normal leading-5",
-								active ? "text-[var(--omp-text)]" : "text-[var(--omp-muted)]",
-							)}
-							title={title}
-						/>
-					)}
-					<span
-						className="omp-sidebar-session-actions flex shrink-0 items-center justify-end gap-0.5"
+				</span>
+				{pinned && (
+					<Pin size={11} className="mr-1.5 shrink-0 text-[var(--omp-dim)]" aria-label={t("sidebar.pinned")} />
+				)}
+				{renaming ? (
+					<input
+						ref={renameRef}
+						value={renameDraft}
+						onChange={event => setRenameDraft(event.target.value)}
+						onBlur={event => commitRename(session, event.currentTarget.value)}
+						onKeyDown={event => {
+							if (isImeKeyEvent(event)) return;
+							if (event.key === "Enter") commitRename(session, event.currentTarget.value);
+							onEscape(event, () => setRenamingSessionPath(null));
+						}}
 						onClick={event => event.stopPropagation()}
-					>
-						{!signalActive && renamingSessionPath !== session.path ? (
-							<button
-								type="button"
-								title={t("sidebar.rename")}
-								aria-label={t("sidebar.rename")}
-								onClick={() => startRename(session)}
-								className="omp-sidebar-action order-2 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[var(--omp-dim)] hover:bg-[var(--omp-bg-tertiary)] hover:text-[var(--omp-text)]"
-							>
-								<Pencil size={11} />
-							</button>
-						) : !active ? (
-							<button
-								type="button"
-								title={t("sidebar.menu.openNewTab")}
-								aria-label={t("sidebar.menu.openNewTab")}
-								onClick={() => void openSession(session)}
-								className="omp-sidebar-action flex h-5 w-5 shrink-0 items-center justify-center rounded text-[var(--omp-dim)] hover:bg-[var(--omp-bg-tertiary)] hover:text-[var(--omp-text)]"
-							>
-								<Plus size={11} />
-							</button>
-						) : (
-							<span className="h-5 w-5 shrink-0" />
+						className="min-w-0 flex-1 rounded-md border border-[var(--omp-input-focus-border)] bg-[var(--omp-input-bg)] px-1.5 py-0.5 text-omp-md text-[var(--omp-text)] outline-none"
+					/>
+				) : (
+					<SidebarRowTitle
+						className={cx(
+							"text-omp-md leading-5",
+							active ? "text-[var(--omp-text)]" : "text-[var(--omp-text-secondary)]",
 						)}
-						{!signalActive ? (
-							<button
-								className="omp-sidebar-action flex h-5 w-5 shrink-0 items-center justify-center rounded text-[var(--omp-dim)] hover:bg-[var(--omp-tool-error-bg)] hover:text-[var(--omp-error)]"
-								onClick={() => setPendingDelete({ kind: "session", session })}
-								title={t("sidebar.delete")}
-								type="button"
-								aria-label={t("sidebar.delete")}
-							>
-								<Trash2 size={11} />
-							</button>
-						) : (
-							<span className="order-1 h-5 w-5 shrink-0" />
-						)}
+						title={title}
+					/>
+				)}
+				{!renaming && recency > 0 && (
+					<span className="omp-sidebar-time ml-2 shrink-0 text-omp-xs tabular-nums text-[var(--omp-dim)]">
+						{formatTimeAgo(new Date(recency).toISOString(), { compact: true })}
 					</span>
-				</div>
+				)}
+				<span
+					className="omp-sidebar-session-actions flex shrink-0 items-center justify-end gap-0.5"
+					onClick={event => event.stopPropagation()}
+				>
+					{!signalActive && !renaming ? (
+						<button
+							type="button"
+							title={t("sidebar.rename")}
+							aria-label={t("sidebar.rename")}
+							onClick={() => startRename(session)}
+							className={rowActionButton}
+						>
+							<Pencil size={12} />
+						</button>
+					) : !active ? (
+						<button
+							type="button"
+							title={t("sidebar.menu.openNewTab")}
+							aria-label={t("sidebar.menu.openNewTab")}
+							onClick={() => void openSession(session)}
+							className={rowActionButton}
+						>
+							<Plus size={12} />
+						</button>
+					) : null}
+					{!signalActive && (
+						<button
+							className={cx(
+								rowActionButton,
+								"hover:!bg-[var(--omp-tool-error-bg)] hover:!text-[var(--omp-error)]",
+							)}
+							onClick={() => setPendingDelete({ kind: "session", session })}
+							title={t("sidebar.delete")}
+							type="button"
+							aria-label={t("sidebar.delete")}
+						>
+							<Trash2 size={12} />
+						</button>
+					)}
+				</span>
 			</div>
 		);
 	};
+
+	/** One collapsible group header: icon (chevron on hover), name, count, hover actions. */
+	const renderGroupHeader = ({
+		id,
+		name,
+		count,
+		icon: Icon,
+		collapsedState,
+		onToggle,
+		pinned,
+		actions,
+		renameInput,
+		onContextMenu,
+		current,
+	}: {
+		id: string;
+		name: string;
+		count: number;
+		icon: LucideIcon;
+		collapsedState: boolean;
+		onToggle: () => void;
+		pinned?: boolean;
+		actions?: ReactNode;
+		renameInput?: ReactNode;
+		onContextMenu?: (event: ReactMouseEvent) => void;
+		current?: boolean;
+	}) => (
+		<div
+			data-workspace-group={id === "__chats__" ? undefined : id}
+			data-actions-open={renameInput ? true : undefined}
+			onContextMenu={onContextMenu}
+			className={cx(
+				"omp-sidebar-workspace-row omp-color-fade group/header flex h-[30px] w-full items-center rounded-lg px-2 text-omp-md",
+				current ? "text-[var(--omp-text)]" : "text-[var(--omp-muted)] hover:text-[var(--omp-text)]",
+				"hover:bg-[var(--omp-sidebar-item-hover)]",
+			)}
+		>
+			<button
+				type="button"
+				onClick={onToggle}
+				aria-expanded={!collapsedState}
+				aria-label={renameInput ? name : undefined}
+				className="flex min-w-0 flex-1 items-center text-left"
+			>
+				<span className="omp-sidebar-group-icon relative mr-2 flex size-4 shrink-0 items-center justify-center">
+					<Icon
+						aria-hidden="true"
+						data-sidebar-workspace-icon={id === "__chats__" ? undefined : true}
+						size={15}
+						strokeWidth={1.75}
+					/>
+					<ChevronRight
+						aria-hidden="true"
+						size={13}
+						className={cx("omp-disclosure-chevron absolute", !collapsedState && "rotate-90")}
+					/>
+				</span>
+				{pinned && (
+					<Pin size={11} className="mr-1.5 shrink-0 text-[var(--omp-dim)]" aria-label={t("sidebar.pinned")} />
+				)}
+				{renameInput ?? <SidebarRowTitle className="text-left font-medium" title={name} />}
+			</button>
+			{!renameInput && (
+				<span className="omp-sidebar-group-count ml-2 shrink-0 text-omp-xs tabular-nums text-[var(--omp-dim)]">
+					{count}
+				</span>
+			)}
+			{actions && (
+				<span
+					className="omp-sidebar-workspace-actions flex shrink-0 items-center justify-end gap-0.5"
+					onClick={event => event.stopPropagation()}
+				>
+					{actions}
+				</span>
+			)}
+		</div>
+	);
 
 	interface NavigationItem {
 		id: string;
@@ -553,29 +616,30 @@ export function Sidebar() {
 		shortcut?: string;
 		onClick: () => void;
 	}
-	// Session work stays one click away; app-wide tools fold under "More" and
-	// remain reachable from the Command Center.
+	// Session work stays one click away; app-wide tools live in the More menu
+	// and remain reachable from the Command Center.
 	const primaryNavigation: NavigationItem[] = [
 		{
 			id: "commands",
 			icon: Command,
 			label: t("titlebar.commands"),
-			shortcut: paletteShortcut,
+			shortcut: actionChords.get("palette")?.[0],
 			title: t("titlebar.commandsHint", { shortcut: paletteShortcut }),
 			onClick: () => useUiStore.getState().openCommandPalette(),
 		},
-		{ id: "agents", icon: Bot, label: t("titlebar.agentHub"), onClick: () => useUiStore.getState().openAgentHub() },
+		{
+			id: "agents",
+			icon: Bot,
+			label: t("titlebar.agentHub"),
+			shortcut: actionChords.get("agents.hub")?.[0],
+			onClick: () => useUiStore.getState().openAgentHub(),
+		},
 		{
 			id: "pull-requests",
 			icon: GitPullRequest,
 			label: t("titlebar.prCenter"),
+			shortcut: actionChords.get("pr.center")?.[0],
 			onClick: () => useUiStore.getState().openPrCenter(),
-		},
-		{
-			id: "workspace",
-			icon: PanelRight,
-			label: t("titlebar.workspace"),
-			onClick: () => useUiStore.getState().togglePanel(),
 		},
 	];
 	const secondaryNavigation: NavigationItem[] = [
@@ -603,6 +667,7 @@ export function Sidebar() {
 			id: "hotkeys",
 			icon: Keyboard,
 			label: t("titlebar.hotkeys"),
+			shortcut: actionChords.get("hotkeys")?.[0],
 			onClick: () => useUiStore.getState().openHotkeys(),
 		},
 		{
@@ -613,6 +678,8 @@ export function Sidebar() {
 			onClick: () => useUiStore.getState().openFeedback(),
 		},
 	];
+	const navigationRow =
+		"omp-pressable group/nav flex h-8 w-full min-w-0 items-center gap-2.5 rounded-lg px-2 text-left text-omp-md text-[var(--omp-text-secondary)] hover:bg-[var(--omp-sidebar-item-hover)] hover:text-[var(--omp-text)]";
 	const renderNavigationItem = (item: NavigationItem) => {
 		const Icon = item.icon;
 		return (
@@ -622,21 +689,22 @@ export function Sidebar() {
 				onClick={item.onClick}
 				data-command-center-entry={item.id === "commands" ? true : undefined}
 				title={item.title}
-				className="omp-pressable flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-left text-omp-md text-[var(--omp-muted)] hover:bg-[var(--omp-selected-bg)] hover:text-[var(--omp-text)]"
+				className={navigationRow}
 			>
-				<Icon aria-hidden="true" className="shrink-0" size={15} />
+				<Icon aria-hidden="true" className="shrink-0 text-[var(--omp-muted)]" size={16} strokeWidth={1.75} />
 				<span className="min-w-0 flex-1 truncate">{item.label}</span>
 				{item.shortcut && (
-					<kbd className="shrink-0 rounded border border-[var(--omp-border-muted)] px-1 text-omp-xxs text-[var(--omp-dim)]">
+					<span className="shrink-0 text-omp-xs tracking-wide text-[var(--omp-dim)] opacity-0 transition-opacity group-hover/nav:opacity-100 group-focus-visible/nav:opacity-100">
 						{item.shortcut}
-					</kbd>
+					</span>
 				)}
 			</button>
 		);
 	};
 
 	const utilityButton =
-		"omp-pressable flex h-6 w-7 shrink-0 items-center justify-center rounded-md text-[var(--omp-muted)] hover:bg-[var(--omp-selected-bg)] hover:text-[var(--omp-text)]";
+		"omp-pressable flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--omp-muted)] hover:bg-[var(--omp-selected-bg)] hover:text-[var(--omp-text)]";
+	const newShortcut = actionChords.get("tab.new")?.[0];
 
 	return (
 		<>
@@ -644,25 +712,26 @@ export function Sidebar() {
 				className="omp-session-sidebar relative flex h-full shrink-0 flex-col border-r border-[var(--omp-border-muted)] bg-[var(--omp-sidebar-bg)]"
 				style={{ width: sidebarWidth }}
 			>
-				<div className="drag-region flex h-12 shrink-0 items-center gap-1 border-b border-[var(--omp-border-muted)] px-2.5">
-					<button
-						type="button"
-						onClick={event => {
-							const rect = event.currentTarget.getBoundingClientRect();
-							setModeMenu({
-								x: Number.isFinite(rect.left) ? rect.left : 8,
-								y: (Number.isFinite(rect.bottom) ? rect.bottom : 40) + 6,
-							});
-						}}
-						aria-label={t("sidebar.mode.aria")}
-						aria-expanded={modeMenu !== null}
-						aria-haspopup="menu"
-						className="no-drag omp-pressable flex h-8 min-w-0 items-center gap-1.5 rounded-lg px-2 font-display text-omp-lg font-semibold text-[var(--omp-text)] hover:bg-[var(--omp-selected-bg)]"
-					>
-						{mode === "code" ? <Code2 size={15} /> : <BriefcaseBusiness size={15} />}
-						<span>{t(`sidebar.mode.${mode}`)}</span>
-						<ChevronDown size={13} className="text-[var(--omp-dim)]" />
-					</button>
+				{/* Header: the lane switch and session search. */}
+				<div className="drag-region flex h-12 shrink-0 items-center gap-1 px-2.5">
+					<div role="group" aria-label={t("sidebar.mode.aria")} className="omp-segmented no-drag">
+						{(["code", "work"] as const).map(value => {
+							const Icon = value === "code" ? Code2 : BriefcaseBusiness;
+							return (
+								<button
+									key={value}
+									type="button"
+									aria-pressed={mode === value}
+									title={t(value === "code" ? "sidebar.mode.codeDescription" : "sidebar.mode.workDescription")}
+									onClick={() => setMode(value)}
+									className="flex h-6 items-center gap-1.5 px-2.5 text-omp-sm font-medium"
+								>
+									<Icon aria-hidden="true" size={13} />
+									{t(`sidebar.mode.${value}`)}
+								</button>
+							);
+						})}
+					</div>
 					<div className="flex-1" />
 					<button
 						type="button"
@@ -675,86 +744,88 @@ export function Sidebar() {
 					</button>
 				</div>
 
-				<div className="flex items-center gap-1 px-2 pb-2 pt-2">
-					<button
-						type="button"
-						data-sidebar-new-agent
-						onClick={startNew}
-						className="omp-pressable flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg px-2 text-left text-omp-md font-medium text-[var(--omp-text)] hover:bg-[var(--omp-selected-bg)]"
-					>
-						{mode === "code" ? <SquarePen size={15} /> : <BriefcaseBusiness size={15} />}
-						<span className="min-w-0 flex-1 truncate">
-							{mode === "code" ? t("sidebar.newCode") : t("sidebar.newWork")}
-						</span>
-					</button>
-					{mode === "code" && (
+				{/* Primary action + navigation. */}
+				<div className="shrink-0 px-2 pt-1 pb-3" data-sidebar-navigation>
+					<div className="mb-1 flex items-center gap-1">
 						<button
 							type="button"
-							data-sidebar-new-chat
-							onClick={() => void openTab({ kind: "chat" })}
-							title={t("sidebar.quickChat")}
-							aria-label={t("sidebar.quickChat")}
-							className="omp-pressable flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[var(--omp-muted)] hover:bg-[var(--omp-selected-bg)] hover:text-[var(--omp-text)]"
+							data-sidebar-new-agent
+							onClick={startNew}
+							className="omp-pressable group/nav flex h-8 min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2 text-left text-omp-md font-medium text-[var(--omp-text)] hover:bg-[var(--omp-sidebar-item-hover)]"
 						>
-							<MessageSquarePlus size={16} />
+							<SquarePen aria-hidden="true" size={16} strokeWidth={1.75} className="shrink-0" />
+							<span className="min-w-0 flex-1 truncate">
+								{mode === "code" ? t("sidebar.newCode") : t("sidebar.newWork")}
+							</span>
+							{newShortcut && (
+								<span className="shrink-0 text-omp-xs font-normal tracking-wide text-[var(--omp-dim)] opacity-0 transition-opacity group-hover/nav:opacity-100 group-focus-visible/nav:opacity-100">
+									{newShortcut}
+								</span>
+							)}
 						</button>
-					)}
-				</div>
-
-				<div className="px-2 pb-2" data-sidebar-navigation>
-					<div className="space-y-0.5">{primaryNavigation.map(renderNavigationItem)}</div>
+						{mode === "code" && (
+							<button
+								type="button"
+								data-sidebar-new-chat
+								onClick={() => void openTab({ kind: "chat" })}
+								title={t("sidebar.quickChat")}
+								aria-label={t("sidebar.quickChat")}
+								className="omp-pressable flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--omp-muted)] hover:bg-[var(--omp-sidebar-item-hover)] hover:text-[var(--omp-text)]"
+							>
+								<MessageSquarePlus size={16} strokeWidth={1.75} />
+							</button>
+						)}
+					</div>
+					<div className="space-y-px">{primaryNavigation.map(renderNavigationItem)}</div>
 					<button
 						type="button"
-						aria-expanded={navigationExpanded}
-						aria-label={t(navigationExpanded ? "sidebar.navigation.collapse" : "sidebar.navigation.expand")}
-						title={t(navigationExpanded ? "sidebar.navigation.collapse" : "sidebar.navigation.expand")}
-						onClick={() => setNavigationExpanded(!navigationExpanded)}
-						className="omp-pressable mt-0.5 flex h-7 w-full items-center gap-2 rounded-lg px-2 text-left text-omp-sm text-[var(--omp-dim)] hover:bg-[var(--omp-selected-bg)] hover:text-[var(--omp-muted)]"
+						aria-haspopup="menu"
+						aria-expanded={moreMenu !== null}
+						aria-label={t("sidebar.navigation.expand")}
+						title={t("sidebar.navigation.expand")}
+						onClick={event => {
+							const rect = event.currentTarget.getBoundingClientRect();
+							setMoreMenu({
+								x: Number.isFinite(rect.left) ? rect.left : 8,
+								y: (Number.isFinite(rect.bottom) ? rect.bottom : 200) + 4,
+							});
+						}}
+						className={cx(
+							navigationRow,
+							"mt-px",
+							moreMenu && "bg-[var(--omp-sidebar-item-hover)] text-[var(--omp-text)]",
+						)}
 					>
-						<ChevronRight
+						<MoreHorizontal
 							aria-hidden="true"
-							size={13}
-							className={cx("omp-disclosure-chevron shrink-0", navigationExpanded && "rotate-90")}
+							className="shrink-0 text-[var(--omp-muted)]"
+							size={16}
+							strokeWidth={1.75}
 						/>
-						<span>{t("sidebar.navigation.more")}</span>
+						<span className="min-w-0 flex-1 truncate">{t("sidebar.navigation.more")}</span>
 					</button>
-					<div
-						aria-hidden={!navigationExpanded}
-						className="omp-sidebar-group"
-						data-state={navigationExpanded ? "expanded" : "collapsed"}
-						inert={!navigationExpanded}
-					>
-						<div className="omp-sidebar-group-content space-y-0.5">
-							{secondaryNavigation.map(renderNavigationItem)}
-						</div>
-					</div>
 				</div>
 
-				<div className="flex items-center justify-between px-4 pb-1.5">
-					<span className="text-omp-xs font-semibold uppercase tracking-[0.12em] text-[var(--omp-dim)]">
-						{t("sidebar.recent")}
-					</span>
-					{totalCount > 0 && (
-						<span
-							className="rounded-full bg-[var(--omp-bg-tertiary)] px-2 py-0.5 text-omp-xs tabular-nums text-[var(--omp-dim)]" // surface-ok: count pill
-						>
-							{totalCount}
-						</span>
-					)}
+				<div className="flex h-7 shrink-0 items-center px-4">
+					<span className="text-omp-xs font-medium text-[var(--omp-dim)]">{t("sidebar.recent")}</span>
 				</div>
 
-				<div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2 [overflow-anchor:none]">
+				<div className="omp-sidebar-list min-h-0 flex-1 overflow-y-auto px-2 pb-3 [overflow-anchor:none]">
 					{listError && sessions.length > 0 && (
-						<p role="alert" className="mx-3 mb-1 break-words text-omp-xs text-[var(--omp-error)]">
+						<p role="alert" className="mx-2 mb-1 break-words text-omp-xs text-[var(--omp-error)]">
 							{t("sidebar.stale")}: {listError}
 						</p>
 					)}
 					{isLoading && sessions.length === 0 && (
-						<div className="px-3 py-6 text-center text-omp-lg text-[var(--omp-dim)]">{t("sidebar.loading")}</div>
+						<div className="space-y-1 px-2 py-1" aria-label={t("sidebar.loading")}>
+							{[72, 56, 64].map(width => (
+								<div key={width} className="omp-skeleton h-[22px] rounded-md" style={{ width: `${width}%` }} />
+							))}
+						</div>
 					)}
 					{listError && sessions.length === 0 && (
 						<div className="mx-1 mt-2 flex flex-col items-center gap-2 px-4 py-6 text-center">
-							<div className="text-omp-lg font-medium text-[var(--omp-error)]">{t("sidebar.loadFailed")}</div>
+							<div className="text-omp-md font-medium text-[var(--omp-error)]">{t("sidebar.loadFailed")}</div>
 							<div className="break-words text-omp-xs text-[var(--omp-muted)]">{listError}</div>
 							<Button icon={<RefreshCw size={12} />} onClick={() => refresh(true)} size="sm" variant="secondary">
 								{t("common.retry")}
@@ -762,15 +833,8 @@ export function Sidebar() {
 						</div>
 					)}
 					{!isLoading && !listError && totalCount === 0 && (
-						<div className="mx-1 mt-2 flex flex-col items-center rounded-xl border border-dashed border-[var(--omp-border-muted)] px-4 py-6 text-center">
-							{mode === "code" ? (
-								<Code2 size={20} className="mb-2 text-[var(--omp-muted)]" />
-							) : (
-								<BriefcaseBusiness size={20} className="mb-2 text-[var(--omp-muted)]" />
-							)}
-							<div className="text-omp-lg font-medium text-[var(--omp-muted)]">
-								{mode === "code" ? t("sidebar.emptyCode") : t("sidebar.emptyWork")}
-							</div>
+						<div className="omp-sidebar-empty px-2 py-2 text-omp-sm leading-relaxed text-[var(--omp-dim)]">
+							{mode === "code" ? t("sidebar.emptyCode") : t("sidebar.emptyWork")}
 						</div>
 					)}
 					{mode === "work" && workSessions.length > 0 && (
@@ -778,191 +842,118 @@ export function Sidebar() {
 							{workSessions.map(session => renderSessionRow(session))}
 						</div>
 					)}
-					{mode === "code" && chatSessions.length > 0 && (
-						<div className="mb-1" data-chat-section>
-							<button
-								type="button"
-								onClick={() => setCollapsed(prev => ({ ...prev, __chats__: !chatsCollapsed }))}
-								aria-expanded={!chatsCollapsed}
-								className="flex h-7 w-full min-w-0 items-center gap-1.5 rounded-md px-1.5 text-left text-omp-md font-normal text-[var(--omp-muted)] hover:text-[var(--omp-text)]"
-							>
-								{chatsCollapsed ? (
-									<ChevronRight size={12} className="shrink-0" />
-								) : (
-									<ChevronDown size={12} className="shrink-0" />
-								)}
-								<MessageCircle size={14} className="shrink-0" />
-								<span className="min-w-0 flex-1 truncate">{t("sidebar.chats")}</span>
-								<span className="shrink-0 tabular-nums font-normal">{chatSessions.length}</span>
-							</button>
-							<div
-								className="omp-sidebar-group"
-								data-session-group="__chats__"
-								data-state={chatsCollapsed ? "collapsed" : "expanded"}
-								aria-hidden={chatsCollapsed}
-								inert={chatsCollapsed}
-							>
-								<div className="omp-sidebar-group-content">
-									<div className="space-y-px">{chatSessions.map(session => renderSessionRow(session))}</div>
-								</div>
-							</div>
-						</div>
-					)}
 					{visibleGroups.map(group => {
 						const groupCollapsed = isCollapsed(group.cwd);
-						const isCurrent = group.cwd === cwd;
-						const groupActionsOpen = renamingGroupCwd === group.cwd;
+						const renaming = renamingGroupCwd === group.cwd;
 						return (
-							<div key={group.cwd} className="mb-0.5">
-								<div
-									data-workspace-group={group.cwd}
-									data-actions-open={groupActionsOpen}
-									onContextMenu={event => setGroupMenu({ anchor: anchorFromEvent(event), group })}
-									className={cx(
-										"omp-sidebar-workspace-row omp-color-fade group flex h-7 w-full items-center gap-1.5 rounded-md px-1.5 pr-8 text-left text-omp-md font-normal",
-										isCurrent
-											? "text-[var(--omp-text)]"
-											: "text-[var(--omp-muted)] hover:text-[var(--omp-text)]",
-									)}
-								>
-									{renamingGroupCwd === group.cwd ? (
+							<div key={group.cwd} className="mb-1">
+								{renderGroupHeader({
+									id: group.cwd,
+									name: group.name,
+									count: group.sessions.length,
+									icon: Folder,
+									collapsedState: groupCollapsed,
+									onToggle: () => toggleGroup(group.cwd),
+									pinned: pinnedGroups.includes(group.cwd),
+									current: group.cwd === cwd,
+									onContextMenu: event => setGroupMenu({ anchor: anchorFromEvent(event), group }),
+									renameInput: renaming ? (
+										<input
+											ref={groupRenameRef}
+											value={groupRenameDraft}
+											onChange={event => setGroupRenameDraft(event.target.value)}
+											onClick={event => event.stopPropagation()}
+											onBlur={() => {
+												useSidebarPrefs.getState().setGroupAlias(group.cwd, groupRenameDraft);
+												setRenamingGroupCwd(null);
+											}}
+											onKeyDown={event => {
+												if (isImeKeyEvent(event)) return;
+												if (event.key === "Enter") {
+													useSidebarPrefs.getState().setGroupAlias(group.cwd, groupRenameDraft);
+													setRenamingGroupCwd(null);
+												}
+												onEscape(event, () => setRenamingGroupCwd(null));
+											}}
+											className="min-w-0 flex-1 rounded-md border border-[var(--omp-input-focus-border)] bg-[var(--omp-input-bg)] px-1.5 py-0.5 text-omp-md text-[var(--omp-text)] outline-none"
+										/>
+									) : undefined,
+									actions: (
 										<>
 											<button
 												type="button"
-												onClick={() => toggleGroup(group.cwd)}
-												aria-expanded={!groupCollapsed}
-												aria-label={group.name}
-												className="flex h-4 w-4 shrink-0 items-center justify-center rounded hover:bg-[var(--omp-bg-tertiary)]"
+												title={t("sidebar.menu.newAgentHere")}
+												aria-label={t("sidebar.menu.newAgentHere")}
+												className={rowActionButton}
+												onClick={event => {
+													event.stopPropagation();
+													void openTab({ cwd: group.cwd });
+												}}
 											>
-												{groupCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+												<SquarePen size={12} />
 											</button>
-											<Folder
-												aria-hidden="true"
-												data-sidebar-workspace-icon
-												size={14}
-												className="shrink-0"
-											/>
-											{pinnedGroups.includes(group.cwd) && (
-												<Pin
-													size={10}
-													className="shrink-0 text-[var(--omp-accent)]"
-													aria-label={t("sidebar.pinned")}
-												/>
-											)}
-											<input
-												ref={groupRenameRef}
-												value={groupRenameDraft}
-												onChange={event => setGroupRenameDraft(event.target.value)}
-												onBlur={() => {
-													useSidebarPrefs.getState().setGroupAlias(group.cwd, groupRenameDraft);
-													setRenamingGroupCwd(null);
+											<button
+												type="button"
+												title={t("sidebar.groupMenu")}
+												aria-label={t("sidebar.groupMenu")}
+												className={rowActionButton}
+												onClick={event => {
+													event.stopPropagation();
+													const rect = event.currentTarget.getBoundingClientRect();
+													setGroupMenu({ anchor: { x: rect.left, y: rect.bottom + 4 }, group });
 												}}
-												onKeyDown={event => {
-													if (isImeKeyEvent(event)) return;
-													if (event.key === "Enter") {
-														useSidebarPrefs.getState().setGroupAlias(group.cwd, groupRenameDraft);
-														setRenamingGroupCwd(null);
-													}
-													onEscape(event, () => setRenamingGroupCwd(null));
-												}}
-												className="min-w-0 flex-1 rounded border border-[var(--omp-input-focus-border)] bg-[var(--omp-input-bg)] px-1 py-0 text-omp-md font-normal text-[var(--omp-text)] outline-none"
-											/>
-											<span className="shrink-0 tabular-nums text-omp-xs font-normal text-[var(--omp-dim)]">
-												{group.sessions.length}
-											</span>
+											>
+												<MoreHorizontal size={13} />
+											</button>
 										</>
-									) : (
-										<button
-											type="button"
-											onClick={() => toggleGroup(group.cwd)}
-											aria-expanded={!groupCollapsed}
-											className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
-										>
-											{groupCollapsed ? (
-												<ChevronRight size={12} className="shrink-0" />
-											) : (
-												<ChevronDown size={12} className="shrink-0" />
-											)}
-											<Folder
-												aria-hidden="true"
-												data-sidebar-workspace-icon
-												size={14}
-												className="shrink-0"
-											/>
-											{pinnedGroups.includes(group.cwd) && (
-												<Pin
-													size={10}
-													className="shrink-0 text-[var(--omp-accent)]"
-													aria-label={t("sidebar.pinned")}
-												/>
-											)}
-											<SidebarRowTitle className="text-left" title={group.name} />
-											<span className="shrink-0 tabular-nums text-omp-xs font-normal text-[var(--omp-dim)]">
-												{group.sessions.length}
-											</span>
-										</button>
-									)}
-									<span
-										className="omp-sidebar-workspace-actions flex shrink-0 items-center justify-end gap-0.5"
-										onClick={event => event.stopPropagation()}
-									>
-										<button
-											type="button"
-											title={t("sidebar.menu.newAgentHere")}
-											aria-label={t("sidebar.menu.newAgentHere")}
-											className="omp-sidebar-action flex h-4 w-4 shrink-0 items-center justify-center rounded text-[var(--omp-dim)] hover:bg-[var(--omp-bg-tertiary)] hover:text-[var(--omp-text)]"
-											onClick={event => {
-												event.stopPropagation();
-												void openTab({ cwd: group.cwd });
-											}}
-										>
-											<Plus size={12} strokeWidth={2.5} />
-										</button>
-										<button
-											type="button"
-											title={t("sidebar.groupMenu")}
-											aria-label={t("sidebar.groupMenu")}
-											className="omp-sidebar-action flex h-4 w-4 shrink-0 items-center justify-center rounded text-[var(--omp-dim)] hover:bg-[var(--omp-bg-tertiary)] hover:text-[var(--omp-text)]"
-											onClick={event => {
-												event.stopPropagation();
-												const rect = event.currentTarget.getBoundingClientRect();
-												setGroupMenu({ anchor: { x: rect.left, y: rect.bottom + 4 }, group });
-											}}
-										>
-											<MoreHorizontal size={11} />
-										</button>
-									</span>
-								</div>
+									),
+								})}
 								{/* Collapsed groups render nothing: a long-lived install with
 								    hundreds of sessions must not build the full DOM per
 								    debounced refresh just to hide it. */}
 								{!groupCollapsed && (
 									<div className="omp-sidebar-group" data-session-group={group.cwd} data-state="expanded">
-										<div className="omp-sidebar-group-content">
-											<div className="space-y-px">
-												{group.sessions.map(session => renderSessionRow(session, true))}
-											</div>
+										<div className="omp-sidebar-group-content space-y-px">
+											{group.sessions.map(session => renderSessionRow(session))}
 										</div>
 									</div>
 								)}
 							</div>
 						);
 					})}
+					{mode === "code" && chatSessions.length > 0 && (
+						<div className="mb-1" data-chat-section>
+							{renderGroupHeader({
+								id: "__chats__",
+								name: t("sidebar.chats"),
+								count: chatSessions.length,
+								icon: MessageCircle,
+								collapsedState: chatsCollapsed,
+								onToggle: () => setCollapsed(prev => ({ ...prev, __chats__: !chatsCollapsed })),
+							})}
+							{!chatsCollapsed && (
+								<div className="omp-sidebar-group" data-session-group="__chats__" data-state="expanded">
+									<div className="omp-sidebar-group-content space-y-px">
+										{chatSessions.map(session => renderSessionRow(session))}
+									</div>
+								</div>
+							)}
+						</div>
+					)}
 				</div>
 
-				{/* Bottom utility row: settings, theme and language — the app-level
-				    controls that are not tied to a session. */}
-				<div className="flex h-8 shrink-0 items-center gap-0.5 border-t border-[var(--omp-border-muted)] px-2">
+				{/* Footer: app-level controls that are not tied to a session. */}
+				<div className="flex h-11 shrink-0 items-center gap-0.5 border-t border-[var(--omp-border-muted)] px-2">
 					<button
 						type="button"
 						data-sidebar-settings
 						onClick={() => useUiStore.getState().openSettings()}
 						title={t("titlebar.settings")}
 						aria-label={t("titlebar.settings")}
-						className="omp-pressable flex h-6 shrink-0 items-center gap-1.5 rounded-md px-1.5 text-omp-sm text-[var(--omp-muted)] hover:bg-[var(--omp-selected-bg)] hover:text-[var(--omp-text)]"
+						className="omp-pressable flex h-7 min-w-0 items-center gap-2 rounded-md px-2 text-omp-md text-[var(--omp-text-secondary)] hover:bg-[var(--omp-selected-bg)] hover:text-[var(--omp-text)]"
 					>
-						<Settings aria-hidden="true" size={13} />
-						<span>{t("titlebar.settings")}</span>
+						<Settings aria-hidden="true" size={15} strokeWidth={1.75} className="shrink-0" />
+						<span className="truncate">{t("titlebar.settings")}</span>
 					</button>
 					<div className="flex-1" />
 					<button
@@ -972,9 +963,9 @@ export function Sidebar() {
 						aria-label={t("themePicker.aria")}
 						className={utilityButton}
 					>
-						<Palette size={13} />
+						<Palette size={15} strokeWidth={1.75} />
 					</button>
-					<LangSwitcher className="h-6 max-h-6 rounded-md px-1.5 text-omp-sm [&_svg]:size-[14px]" />
+					<LangSwitcher className="h-7 max-h-7 rounded-md px-1.5 text-omp-sm [&_svg]:size-[14px]" />
 				</div>
 				<div
 					role="separator"
@@ -987,36 +978,22 @@ export function Sidebar() {
 			</aside>
 			<WorkspaceDialog open={workspaceOpen} onClose={() => setWorkspaceOpen(false)} intent="new-session" />
 
-			{/* Code is project-bound; Work is a full agent in the GUI-owned workspace. */}
-			{modeMenu && (
+			{/* App-wide tools: one menu instead of a second list competing with tasks. */}
+			{moreMenu && (
 				<ContextMenu
-					x={modeMenu.x}
-					y={modeMenu.y}
-					onClose={() => setModeMenu(null)}
-					items={[
-						{
-							id: "mode-code",
-							label: t("sidebar.mode.code"),
-							description: t("sidebar.mode.codeDescription"),
-							icon: Code2,
-							hint: mode === "code" ? "✓" : undefined,
-							onSelect: () => {
-								setMode("code");
-								setModeMenu(null);
-							},
+					x={moreMenu.x}
+					y={moreMenu.y}
+					onClose={() => setMoreMenu(null)}
+					items={secondaryNavigation.map(item => ({
+						id: `nav-${item.id}`,
+						label: item.label,
+						icon: item.icon,
+						hint: item.shortcut,
+						onSelect: () => {
+							setMoreMenu(null);
+							item.onClick();
 						},
-						{
-							id: "mode-work",
-							label: t("sidebar.mode.work"),
-							description: t("sidebar.mode.workDescription"),
-							icon: BriefcaseBusiness,
-							hint: mode === "work" ? "✓" : undefined,
-							onSelect: () => {
-								setMode("work");
-								setModeMenu(null);
-							},
-						},
-					]}
+					}))}
 				/>
 			)}
 

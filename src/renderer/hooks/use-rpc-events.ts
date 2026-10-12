@@ -49,7 +49,7 @@ import {
 } from "../stores/session-runtime-context";
 import { useSettingsStore } from "../stores/settings";
 import { useSubagentsStore } from "../stores/subagents";
-import { isTabClosed, useTabsStore } from "../stores/tabs";
+import { isTabClosed, useTabsStore, visibleTabIds } from "../stores/tabs";
 import { useToastStore } from "../stores/toast";
 import { useTodoStore } from "../stores/todo";
 import { useToolsStore } from "../stores/tools";
@@ -201,9 +201,8 @@ function notifyOnAgentEnd(tabId: string, event: Extract<AgentSessionEvent, { typ
 
 /**
  * Toast a failed turn in-app regardless of the desktop-notification policy
- * (error notifications default off). The chat bubble carries the message, but
- * a failure with no visible output — e.g. the provider rejects the first
- * request right after a model switch — otherwise looks like a silent no-op.
+ * (error notifications default off) — for tabs off screen. On screen, the
+ * failed reply's error card carries the message and the Retry action.
  * Same guards as notifyOnAgentEnd: deferred mid-run settles and live
  * auto-retries stay quiet (the retry row and its final-failure toast cover
  * those), and aborted turns are user-initiated.
@@ -211,6 +210,8 @@ function notifyOnAgentEnd(tabId: string, event: Extract<AgentSessionEvent, { typ
 function toastOnAgentError(tabId: string, event: Extract<AgentSessionEvent, { type: "agent_end" }>): void {
 	if (event.isTerminal === false) return;
 	if (retryPendingTabs.has(tabId)) return;
+	// On screen, the failed reply's error card (with Retry) already says it.
+	if (tabOnScreen(tabId)) return;
 	const last = event.messages?.findLast(message => message.role === "assistant");
 	if (last?.stopReason !== "error") return;
 	const detail =
@@ -218,6 +219,42 @@ function toastOnAgentError(tabId: string, event: Extract<AgentSessionEvent, { ty
 			? last.errorMessage.replace(/\s+/g, " ").slice(0, 200)
 			: translate("common.unknownError");
 	useToastStore.getState().push({ variant: "error", title: translate("events.turnFailed"), message: detail });
+}
+
+/**
+ * A background tab's run settled. Its full event stream is parked while it is
+ * off screen, so the end-of-run toast and desktop notification above never
+ * see it — the pool's light status carries the outcome instead. In-app: a
+ * failure toasts with its error, a success says so briefly. Desktop: the same
+ * notify policy as an on-screen run (pref, `<kind>.notify`, window focus).
+ */
+export function notifyBackgroundSettle(
+	tabId: string,
+	label: string,
+	outcome: "complete" | "failed",
+	detail?: string,
+): void {
+	const runtime = sessionRuntime(tabId);
+	if (outcome === "failed") {
+		const message = detail ? detail.replace(/\s+/g, " ").slice(0, 200) : translate("events.notificationError");
+		useToastStore.getState().push({ variant: "error", title: translate("tabs.bg.failed", { tab: label }), message });
+		if (runtime) void maybeNotify("error", label, message, runtime.command);
+		return;
+	}
+	useToastStore
+		.getState()
+		.push({ variant: "success", message: translate("tabs.bg.done", { tab: label }), durationMs: 3000 });
+	if (runtime) void maybeNotify("completion", label, translate("events.notificationComplete"), runtime.command);
+}
+
+/**
+ * Whether the user is looking at the tab's transcript right now: the window
+ * has focus and the tab is the active one or a visible split pane. Inline
+ * status covers those; toasts are for everything else.
+ */
+function tabOnScreen(tabId: string): boolean {
+	const focused = typeof document.hasFocus === "function" && document.hasFocus();
+	return focused && visibleTabIds(useTabsStore.getState()).includes(tabId);
 }
 
 /** Goal statuses past which no live goal remains — the composer chip must clear. */
@@ -374,19 +411,21 @@ export function useRpcEvents(heartbeatMs = 15_000): void {
 								},
 								awaitingModelSince: null,
 							});
-							useToastStore.getState().push({
-								variant: "warning",
-								message: translate(
-									event.delayMs >= 60_000 ? "events.retryScheduledAt" : "events.retryScheduled",
-									{
-										attempt: event.attempt,
-										max: event.maxAttempts,
-										seconds: Math.round(event.delayMs / 1000),
-										time: formatClock(Date.now() + event.delayMs),
-										error: event.errorMessage,
-									},
-								),
-							});
+							// The retry row says this in place; a toast only helps a tab off screen.
+							if (!tabOnScreen(tabId))
+								useToastStore.getState().push({
+									variant: "warning",
+									message: translate(
+										event.delayMs >= 60_000 ? "events.retryScheduledAt" : "events.retryScheduled",
+										{
+											attempt: event.attempt,
+											max: event.maxAttempts,
+											seconds: Math.round(event.delayMs / 1000),
+											time: formatClock(Date.now() + event.delayMs),
+											error: event.errorMessage,
+										},
+									),
+								});
 							break;
 						}
 						case "auto_retry_end": {
@@ -400,6 +439,8 @@ export function useRpcEvents(heartbeatMs = 15_000): void {
 									? { awaitingModelSince: Date.now() }
 									: {}),
 							});
+							// On screen, the resumed stream or the failed reply speaks for itself.
+							if (tabOnScreen(tabId)) break;
 							if (event.success) {
 								useToastStore
 									.getState()

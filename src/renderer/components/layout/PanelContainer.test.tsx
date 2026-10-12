@@ -1,7 +1,7 @@
 /**
- * PanelContainer chat filter: a tool-free chat tab renders only the files +
- * logs drawer tabs (diffs can't exist without tools); an agent tab also gets
- * diff. Todo/plan/agents/queue moved to the center dock — they must not
+ * PanelContainer chat filter: a tool-free chat tab renders only the files
+ * drawer tab (diffs can't exist without tools); an agent tab also gets
+ * diff. Logs live in their own dialog, never in the drawer. Todo/plan/agents/queue moved to the center dock — they must not
  * appear here. Same linkedom + react-dom harness as mode-visibility.test.tsx.
  */
 
@@ -102,16 +102,15 @@ function FileLinkHarness({ content = "[report](docs/report.md)" }: { content?: s
 }
 
 describe("PanelContainer chat tab filter", () => {
-	it("renders only files + logs tabs in a chat tab", async () => {
+	it("renders only the files tab in a chat tab", async () => {
 		seedActiveTab("chat");
 		useUiStore.setState({ panelTab: "files", panelVisible: true });
 		await mount(<PanelContainer />);
 
 		const labels = drawerTabLabels();
 		expect(labels).toContain("Files");
-		expect(labels).toContain("Logs");
 		// Diff is agent-only; todo/plan/agents/queue live in the center dock now.
-		expect(labels).not.toContain("Diff");
+		expect(labels).not.toContain("Changes");
 	});
 
 	it("falls back to the files surface when the agent-only diff tab was selected before entering chat", async () => {
@@ -128,11 +127,11 @@ describe("PanelContainer chat tab filter", () => {
 		await mount(<PanelContainer />);
 
 		const labels = drawerTabLabels();
-		for (const visible of ["Diff", "Files", "Logs"]) {
+		for (const visible of ["Changes", "Files"]) {
 			expect(labels).toContain(visible);
 		}
-		// The drawer's old live-execution tabs moved to the center dock.
-		for (const moved of ["Todo", "Plan", "Agents", "Queue"]) {
+		// Live-execution tabs moved to the center dock, logs to their own dialog.
+		for (const moved of ["Todo", "Plan", "Agents", "Queue", "Logs"]) {
 			expect(labels).not.toContain(moved);
 		}
 	});

@@ -445,7 +445,7 @@ export function PlanDockCard() {
 								{sections.map((section, sectionIndex) => (
 									<section className="mb-1.5" key={sectionIndex}>
 										{section.heading && (
-											<div className="truncate px-1 py-1 text-omp-sm font-semibold tracking-wide text-(--omp-accent) uppercase">
+											<div className="truncate px-1 py-1 text-omp-sm font-semibold text-(--omp-accent)">
 												{section.heading}
 											</div>
 										)}

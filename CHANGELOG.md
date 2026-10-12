@@ -2,6 +2,42 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **No more tab limit**: open as many tabs and windows as you like — the old 10-tab ceiling is gone, a restored session brings back every tab, and a restored tab only starts its process when you open it.
+- **Background tabs speak up**: when a run finishes in a tab you are not looking at you get a short "“…” finished" notice, and a failure shows its error; desktop notifications follow the same completion/error settings as the visible tab. A tab retrying after a provider error shows an amber dot, a failed one a red dot until you open it.
+- The tab strip keeps **⋯**, **+** and the chat/worktree buttons pinned at its end however many tabs are open, scrolls to the tab you switch to, takes the mouse wheel, and no longer shows a scrollbar.
+- A run that retries after the same provider error shows one error card with the attempt count instead of a stack of identical cards.
+- The model picker ends with **Add models or providers…**, which opens Providers.
+- The queue chip above the composer lists only lanes that hold messages ("Steering 1", not "Queued 0 · Steering 1").
+- **New look**: neutral graphite (dark) and white (light) default themes with one clear blue accent, the system font (SF Pro on macOS), and larger reading text — replies at 15px, interface text no smaller than 11px.
+- Your messages appear as right-aligned bubbles; step summaries read as one line ("3 steps complete ›") with a slim guide when expanded; tables, code blocks and inline code are lighter and use sentence-case labels instead of all-caps headers.
+- The composer is a single rounded surface with round controls and a round send/stop button.
+- **Composer never wraps**: attach, full-screen editor (⌃G) and prompt history (⌃R) live behind one **+** button, the send/stop cluster keeps its place at every window width, and while a task runs Stop stands alone until you type a follow-up. In narrow windows the model picker keeps its name instead of collapsing to a bare arrow.
+- The line under the composer pairs the context strategy with how full the context is ("6% of 128k"); the model is named once, in the picker.
+- **Waiting and errors**: the wait for a reply is one quiet "Waiting for the model" line (elapsed time after 5s, a Stop button once it stalls) instead of a terminal-style Esc hint; provider retries show a countdown, the attempt and Stop; a failed reply is a clear error card with **Retry**. Retry and failure toasts now appear only for tabs you are not looking at.
+- After a run that edited files, the conversation ends with "N files changed +x −y · Review", which opens those edits in the review panel.
+- The title bar's usage figures are one quiet readout (tokens · cost · time, zeros left out) with the full breakdown on hover.
+- The turn map sits beside the scrollbar, appears from three turns on, and steps aside in narrow windows; turns are evenly spaced.
+- Sidebar, tabs and the Workspace panel are calmer: status shows as a small dot (finished past sessions show none), keyboard shortcuts appear on hover, and tabs are single-line pills.
+- **Redesigned sidebar**: Code and Work switch with one click from a segmented control, **New task** leads the list, app-wide tools (capabilities, providers, usage, stats, shortcuts, feedback) open from a single **More** menu instead of pushing your tasks down, and every task shows how recently it was used. Project folders turn into a disclosure arrow on hover, and row actions take the place of the time only while you point at them.
+- **Review toggle in the title bar** (top right, mirrors the sidebar toggle; ⌘J still works) shows how many files the checkout has changed and replaces the sidebar's "Open workspace" row.
+- **Redesigned review panel**: it holds **Changes** and **Files** only, and Working tree refreshes itself when a run finishes. Changes has one menu for Working tree, Session edits, Edit history and Artifacts. Each changed file is a card with its status letter, name, folder and +/− counts; small change sets open fully, larger ones expand per file or all at once, headers stay pinned while you scroll a long diff, and unified/split applies everywhere.
+- **Files** preview shows line numbers and offers copy path, @mention and open externally as compact buttons; search shows file name and folder separately.
+- **Logs** moved out of the side panel into their own window (title bar **⋯** menu or the `logs` command). They read as time, level and message, with each record's extra fields folded into one dim line you can click to expand; level filters show their counts, and records are filed by their real level instead of by any "error" word inside them.
+- Settings forms sit on a centered column so each switch stays beside its label; all switches share one size and glide when toggled.
+- Motion is smoother: dialogs, menus and toasts settle in on a single long-deceleration curve, new turns rise gently into place, and live work labels ("Thinking", running steps) shimmer instead of flashing color.
+
+### Fixed
+
+- A long draft or an opening dock card no longer pushes the latest turn under the composer.
+- A tab you open while it is retrying shows its retry countdown and attempt instead of "Waiting for the model".
+- `/compact` on a session too small to compact says so as a notice and no longer puts `/compact` back in the composer as if the message were lost.
+- Step summaries read "1 step complete", not "1 steps complete".
+- The welcome screen no longer clips under the tab strip in windows around 720–820px tall, and an empty composer in a narrow split pane no longer shows a scrollbar.
+- Working-tree diffs no longer show git's `index …` header line as part of the file.
+- Working-tree diffs now load for projects opened through a symlinked folder (such as `/tmp` on macOS); every file used to fail with "File resolves outside this checkout".
+
 ## [0.9.19] - 2026-10-11
 
 ### Changed

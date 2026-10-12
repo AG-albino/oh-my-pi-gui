@@ -179,9 +179,7 @@ export function PrDetailPane({ onCreateOpen }: { onCreateOpen: () => void }) {
 			{/* Body */}
 			{detail.body.trim().length > 0 && (
 				<section>
-					<h3 className="mb-1.5 text-omp-sm font-medium uppercase tracking-wide text-(--omp-dim)">
-						{t("prCenter.section.body")}
-					</h3>
+					<h3 className="mb-1.5 text-omp-sm font-medium text-(--omp-dim)">{t("prCenter.section.body")}</h3>
 					<div className="rounded-lg border border-(--omp-border-muted) p-3 text-omp-md">
 						<MarkdownRenderer content={shownBody} />
 						{collapsible && (
@@ -202,7 +200,7 @@ export function PrDetailPane({ onCreateOpen }: { onCreateOpen: () => void }) {
 			{/* Checks */}
 			{detail.checks.length > 0 && (
 				<section>
-					<h3 className="mb-1.5 text-omp-sm font-medium uppercase tracking-wide text-(--omp-dim)">
+					<h3 className="mb-1.5 text-omp-sm font-medium text-(--omp-dim)">
 						{t("prCenter.section.checks", { count: String(detail.checks.length) })}
 					</h3>
 					<div className="flex flex-col gap-0.5 rounded-lg border border-(--omp-border-muted) p-2">
@@ -221,7 +219,7 @@ export function PrDetailPane({ onCreateOpen }: { onCreateOpen: () => void }) {
 
 			{/* Files */}
 			<section>
-				<h3 className="mb-1.5 text-omp-sm font-medium uppercase tracking-wide text-(--omp-dim)">
+				<h3 className="mb-1.5 text-omp-sm font-medium text-(--omp-dim)">
 					{t("prCenter.section.files", { count: String(detail.files.length) })}
 				</h3>
 				<div className="flex flex-col gap-1.5">

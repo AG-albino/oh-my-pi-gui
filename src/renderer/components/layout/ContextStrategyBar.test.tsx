@@ -99,11 +99,10 @@ afterEach(async () => {
 });
 
 describe("ContextStrategyBar", () => {
-	it("shows the model, the strategy and the method this model will really run", async () => {
+	it("shows the strategy and the method this model will really run", async () => {
 		await mount(kimi);
 
 		const row = container.textContent ?? "";
-		expect(row).toContain("Kimi K3 256K");
 		expect(row).toContain("Balanced");
 		// No server compaction, reads images: the default order lands on the image archive.
 		expect(row).toContain("Image archive");

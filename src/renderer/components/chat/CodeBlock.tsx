@@ -145,23 +145,19 @@ export function CodeBlock({
 	return (
 		<div
 			className={cx(
-				"group/code relative overflow-hidden rounded-lg border border-[color:var(--omp-md-code-block-border,var(--omp-border))] bg-[var(--omp-code-bg)]",
+				"omp-code-block group/code relative overflow-hidden rounded-xl border border-[color:var(--omp-md-code-block-border,var(--omp-border))] bg-[var(--omp-code-bg)]",
 				className,
 			)}
 		>
 			{(showLanguage || showCopy) && (
-				<div className="flex h-7 items-center justify-end gap-2 border-b border-[var(--omp-border-muted)]/60 px-2.5">
-					{showLanguage && (
-						<span className="font-mono text-omp-xs font-medium uppercase tracking-[0.08em] text-[var(--omp-dim)]">
-							{lang}
-						</span>
-					)}
+				<div className="omp-code-block-header flex h-8 items-center gap-2 px-3.5">
+					{showLanguage && <span className="text-omp-xs font-medium text-[var(--omp-dim)]">{lang}</span>}
 					{showCopy && (
 						<button
 							type="button"
 							onClick={handleCopy}
 							title={t("chat.copyCode")}
-							className="flex h-5 w-5 items-center justify-center rounded-md text-[var(--omp-dim)] opacity-0 transition-[opacity,background-color,color] duration-150 hover:bg-[var(--omp-selected-bg)] hover:text-[var(--omp-text)] focus:opacity-100 group-hover/code:opacity-100"
+							className="ml-auto flex h-6 w-6 items-center justify-center rounded-md text-[var(--omp-dim)] opacity-60 transition-[opacity,background-color,color] duration-150 hover:bg-[var(--omp-selected-bg)] hover:text-[var(--omp-text)] focus:opacity-100 group-hover/code:opacity-100"
 						>
 							{copied ? <Check size={12} className="text-[var(--omp-success)]" /> : <Copy size={12} />}
 						</button>
@@ -177,12 +173,12 @@ export function CodeBlock({
 							startLine={startLine}
 							className="px-2.5 py-3 text-omp-md leading-[1.5]"
 						/>
-						<pre className="min-w-0 flex-1 overflow-x-auto px-3 py-3 font-mono text-omp-md leading-[1.5]">
+						<pre className="min-w-0 flex-1 overflow-x-auto px-3.5 py-3 font-mono text-omp-md leading-[1.5]">
 							{codeElement}
 						</pre>
 					</div>
 				) : (
-					<pre className="overflow-x-auto px-3 py-3 font-mono text-omp-md leading-[1.5]">{codeElement}</pre>
+					<pre className="overflow-x-auto px-3.5 py-3 font-mono text-omp-md leading-[1.55]">{codeElement}</pre>
 				)}
 			</div>
 		</div>

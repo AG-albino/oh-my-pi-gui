@@ -354,7 +354,7 @@ function PluginToggle({
 	const label = enabled ? t("invPanel.enabled") : t("invPanel.disabled");
 	if (busy) {
 		return (
-			<span className="flex h-4.5 w-8 shrink-0 items-center justify-center" title={label}>
+			<span className="flex h-5 w-9 shrink-0 items-center justify-center" title={label}>
 				<Spinner size="sm" />
 			</span>
 		);
@@ -364,7 +364,7 @@ function PluginToggle({
 			aria-checked={enabled}
 			aria-label={label}
 			className={cx(
-				"relative h-4.5 w-8 shrink-0 rounded-full transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50",
+				"relative h-5 w-9 shrink-0 omp-switch-track rounded-full disabled:cursor-not-allowed disabled:opacity-50",
 				enabled ? "bg-(--omp-switch-on)" : "bg-(--omp-switch-off)",
 			)}
 			disabled={disabled}
@@ -375,8 +375,8 @@ function PluginToggle({
 		>
 			<span
 				className={cx(
-					"absolute top-1/2 size-3.5 -translate-y-1/2 rounded-full bg-white shadow transition-[left] duration-150",
-					enabled ? "left-4" : "left-0.5",
+					"omp-switch-thumb absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow",
+					enabled ? "translate-x-4" : "translate-x-0",
 				)}
 			/>
 		</button>

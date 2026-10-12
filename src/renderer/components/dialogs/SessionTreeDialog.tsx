@@ -531,7 +531,7 @@ export function SessionTreeDialog() {
 			if (!data?.sessionPath) return;
 			const opened = await window.omp.sessions.openInNewWindow({ sessionPath: data.sessionPath });
 			if (!opened) {
-				toast({ variant: "warning", message: t("sidebar.parallelCap") });
+				toast({ variant: "error", message: t("sidebar.newWindowFailed") });
 				return;
 			}
 			toast({ variant: "success", message: t("sessionTree.forkedOpened") });
@@ -947,12 +947,7 @@ export function SessionTreeDialog() {
 							<div className="min-w-0 flex-1">
 								<div className="mb-0.5 flex items-center gap-2">
 									<RoleGlyph role={selectedEntry.role} />
-									<span
-										className={cx(
-											"text-omp-xxs font-semibold tracking-widest uppercase",
-											roleMeta(selectedEntry.role).className,
-										)}
-									>
+									<span className={cx("text-omp-xxs font-semibold", roleMeta(selectedEntry.role).className)}>
 										{t(roleMeta(selectedEntry.role).labelKey)}
 									</span>
 									{selectedEntry.timestamp > 0 && (

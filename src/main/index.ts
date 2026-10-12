@@ -290,7 +290,7 @@ function spawnWindowWithLayout(layout: PersistedTabLayout): BrowserWindow | null
 	return null;
 }
 
-/** Spawn a window with its own sidecar (the pool's 1:1 owner). Null at cap.
+/** Spawn a window with its own sidecar (the pool's 1:1 owner). Null on spawn failure.
  *  With no target, create a fresh global chat; explicit workspace/session
  *  requests retain their selected/fallback cwd and requested session kind. */
 function spawnWindow(cwd?: string, pendingSessionPath?: string, kind?: SessionKind): BrowserWindow | null {
@@ -374,7 +374,7 @@ app.whenReady().then(() => {
 				});
 		});
 		return sc;
-	}, 10);
+	});
 	sidecarPool.onWindowTabsChanged = () => persistTabLayouts();
 	// A closed window's tabs have to leave the saved session with it, or the next
 	// launch resurrects a window the user deliberately shut.

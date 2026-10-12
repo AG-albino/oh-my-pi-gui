@@ -353,6 +353,41 @@ export function useComposerSubmit({
 				});
 				return;
 			}
+			if (submit.kind === "compact") {
+				const previousImages = images;
+				setText("");
+				setImages([]);
+				setMenu(null);
+				setSending(true);
+				void submit
+					.request()
+					.then(async response => {
+						if (response.success) {
+							useInputHistoryStore.getState().record(message, originCwd);
+							if (originStillActive())
+								await settleComposerResponse(response, () => hydrateTabSession(originTabId));
+							return;
+						}
+						if (response.code === "rpc_delivery_unknown") {
+							markUncertain();
+							restoreDraft(message, previousImages);
+							showSendError(t("input.compactNotRun"), response.error);
+							return;
+						}
+						// The agent understood and declined (too small, already compacted):
+						// report it; the command itself was not lost.
+						toast({ variant: "warning", title: t("input.compactNotRun"), message: response.error });
+					})
+					.catch(error => {
+						markUncertain();
+						restoreDraft(message, previousImages);
+						showSendError(t("input.compactNotRun"), String(error));
+					})
+					.finally(() => {
+						if (originStillActive()) setSending(false);
+					});
+				return;
+			}
 			const previousImages = images;
 			const optimisticMessage: AgentMessage | undefined =
 				!isStreaming && !expandedMessage.startsWith("/")

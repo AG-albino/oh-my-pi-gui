@@ -114,7 +114,7 @@ export function LiveVoiceDialog() {
 					{state.transcript.length > 0 ? (
 						state.transcript.map(entry => (
 							<div key={`${entry.role}:${entry.turn}`}>
-								<div className="mb-0.5 text-omp-xs font-semibold uppercase tracking-wide text-(--omp-dim)">
+								<div className="mb-0.5 text-omp-xs font-semibold text-(--omp-dim)">
 									{entry.role === "user" ? t("live.you") : t("live.assistant")}
 								</div>
 								<div

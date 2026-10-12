@@ -148,8 +148,8 @@ describe("planComposerSubmit", () => {
 			mode: "prompt",
 			commands: [],
 		});
-		expect(submit.kind).toBe("send");
-		if (submit.kind !== "send") return;
+		expect(submit.kind).toBe("compact");
+		if (submit.kind !== "compact") return;
 		expect(omp.rpc.prompt).not.toHaveBeenCalled();
 		await submit.request();
 		expect(omp.rpc.compact).toHaveBeenCalledOnce();
@@ -165,8 +165,8 @@ describe("planComposerSubmit", () => {
 			mode: "steer",
 			commands: [],
 		});
-		expect(submit.kind).toBe("send");
-		if (submit.kind !== "send") return;
+		expect(submit.kind).toBe("compact");
+		if (submit.kind !== "compact") return;
 		await submit.request();
 		expect(omp.rpc.compact).toHaveBeenCalledOnce();
 		expect(omp.rpc.prompt).not.toHaveBeenCalled();

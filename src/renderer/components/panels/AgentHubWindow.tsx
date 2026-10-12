@@ -78,7 +78,7 @@ function Toggle({
 			<button
 				aria-checked={checked}
 				aria-label={label}
-				className={`relative h-4.5 w-8 shrink-0 rounded-full transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 ${
+				className={`relative h-5 w-9 shrink-0 omp-switch-track rounded-full disabled:cursor-not-allowed disabled:opacity-50 ${
 					checked ? "bg-(--omp-switch-on)" : "bg-(--omp-switch-off)"
 				}`}
 				disabled={disabled}
@@ -87,8 +87,8 @@ function Toggle({
 				type="button"
 			>
 				<span
-					className={`absolute top-0.5 size-3.5 rounded-full bg-white shadow transition-[left] duration-150 ${
-						checked ? "left-4" : "left-0.5"
+					className={`omp-switch-thumb absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow ${
+						checked ? "translate-x-4" : "translate-x-0"
 					}`}
 				/>
 			</button>

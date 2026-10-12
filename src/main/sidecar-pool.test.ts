@@ -125,13 +125,13 @@ function fakeWindow(id: number): FakeWindow {
 	};
 }
 
-function fakePool(max = 10): { pool: SidecarPool; sidecars: FakeSidecar[] } {
+function fakePool(): { pool: SidecarPool; sidecars: FakeSidecar[] } {
 	const sidecars: FakeSidecar[] = [];
 	const pool = new SidecarPool(cwd => {
 		const sidecar = new FakeSidecar(cwd);
 		sidecars.push(sidecar);
 		return sidecar as unknown as SidecarManager;
-	}, max);
+	});
 	return { pool, sidecars };
 }
 
@@ -299,6 +299,45 @@ describe("SidecarPool tabs", () => {
 			"ready",
 		]);
 		expect(pool.tabsForWindow(fw.win)[1]?.status).toBe("ready");
+	});
+
+	it("reports a background run's retry and failure outcome, and clears it on the next run", () => {
+		const { pool, sidecars } = fakePool();
+		const fw = fakeWindow(1);
+		pool.acquire("/a", fw.win, "tab-a");
+		pool.acquire("/b", fw.win, "tab-b");
+		const b = sidecars[1];
+		b?.emitStatus("ready");
+		fw.sent.length = 0;
+		const outcomes = () =>
+			fw.sentTo(IPC_EVENTS.TAB_STATUS).map(s => {
+				const data = s.data as IpcTabStatusPayload;
+				return [data.status, data.attention, data.attentionDetail, data.retry?.attempt ?? data.retry];
+			});
+
+		b?.emit("events", [
+			{ type: "agent_start" },
+			{ type: "auto_retry_start", attempt: 1, maxAttempts: 3, delayMs: 1000, errorMessage: "overloaded" },
+		]);
+		// The retried attempt re-enters through agent_start: the saga is still on.
+		b?.emit("events", [{ type: "agent_start" }]);
+		b?.emit("events", [
+			{ type: "auto_retry_end", success: false, attempt: 3, finalError: "overloaded" },
+			{
+				type: "agent_end",
+				messages: [{ role: "assistant", content: [], stopReason: "error", errorMessage: "overloaded (500)" }],
+			},
+		]);
+		// The next run starts clean; a successful end keeps it clean.
+		b?.emit("events", [{ type: "agent_start" }]);
+		b?.emit("events", [{ type: "agent_end", messages: [{ role: "assistant", content: [], stopReason: "stop" }] }]);
+
+		expect(outcomes()).toEqual([
+			["running", "retrying", undefined, 1],
+			["ready", "failed", "overloaded (500)", null],
+			["running", null, undefined, null],
+			["ready", null, undefined, null],
+		]);
 	});
 
 	it("keeps a tab running until upstream background work settles", () => {
@@ -639,20 +678,23 @@ describe("SidecarPool tabs", () => {
 		expect(pool.tabsForWindow(fw.win)).toEqual([]);
 	});
 
-	it("counts tabs across windows against the cap", () => {
-		const { pool } = fakePool(2);
+	it("has no tab cap across windows", () => {
+		const { pool } = fakePool();
 		const fw1 = fakeWindow(1);
 		const fw2 = fakeWindow(2);
-		expect(pool.acquire("/a", fw1.win, "tab-a")).not.toBeNull();
-		expect(pool.acquire("/b", fw1.win, "tab-b")).not.toBeNull();
-		expect(pool.atCap).toBe(true);
-		// A second window gets no slot either — the cap is pool-wide over tabs.
-		expect(pool.acquire("/c", fw2.win, "tab-c")).toBeNull();
-		expect(pool.size).toBe(2);
+		for (let index = 0; index < 12; index++) {
+			expect(pool.acquire(`/a-${index}`, fw1.win, `tab-a-${index}`)).not.toBeNull();
+		}
+		expect(pool.acquire("/b", fw2.win, "tab-b")).not.toBeNull();
+		expect(pool.size).toBe(13);
+	});
 
-		pool.releaseTab("tab-b");
-		expect(pool.atCap).toBe(false);
-		expect(pool.acquire("/c", fw2.win, "tab-c")).not.toBeNull();
+	it("returns null and holds no entry when the sidecar factory throws", () => {
+		const pool = new SidecarPool(() => {
+			throw new Error("spawn failed");
+		});
+		expect(pool.acquire("/a", fakeWindow(1).win, "tab-a")).toBeNull();
+		expect(pool.size).toBe(0);
 	});
 
 	it("releases every tab of a closed window", () => {

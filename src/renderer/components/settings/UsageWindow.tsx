@@ -266,9 +266,7 @@ export function UsageWindow() {
 		<Modal open={open} onClose={close} title={t("usage.title")} size="lg">
 			<div className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto">
 				<div className="flex items-center justify-between">
-					<span className="text-omp-sm font-semibold uppercase tracking-wider text-[var(--omp-muted)]">
-						{t("usage.providerQuotas")}
-					</span>
+					<span className="text-omp-sm font-semibold text-[var(--omp-muted)]">{t("usage.providerQuotas")}</span>
 					<Button
 						size="sm"
 						variant="ghost"
@@ -314,9 +312,7 @@ export function UsageWindow() {
 
 				{session && (
 					<>
-						<span className="text-omp-sm font-semibold uppercase tracking-wider text-[var(--omp-muted)]">
-							{t("usage.sessionTallies")}
-						</span>
+						<span className="text-omp-sm font-semibold text-[var(--omp-muted)]">{t("usage.sessionTallies")}</span>
 						<div className="grid grid-cols-2 gap-2">
 							{sessionRows.map(({ icon: Icon, label, value }) => (
 								<div

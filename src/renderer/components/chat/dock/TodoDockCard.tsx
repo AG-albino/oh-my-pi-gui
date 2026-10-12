@@ -273,7 +273,7 @@ function PhaseSection({
 						size={12}
 						style={{ transform: collapsed ? undefined : "rotate(90deg)" }}
 					/>
-					<span className="min-w-0 flex-1 truncate text-omp-sm font-semibold tracking-wide text-(--omp-accent) uppercase">
+					<span className="min-w-0 flex-1 truncate text-omp-sm font-semibold text-(--omp-accent)">
 						{phase.name}
 					</span>
 					<span className="shrink-0 text-omp-xs tabular-nums text-(--omp-dim)">

@@ -7,7 +7,9 @@ import { useTabsStore } from "./tabs";
 
 export type { ThemeMode };
 
-export type PanelTab = "diff" | "files" | "logs";
+export type PanelTab = "diff" | "files";
+/** What the Changes view compares: the checkout, this session's edits, their timeline, or virtual artifacts. */
+export type DiffScope = "repository" | "current" | "timeline" | "artifacts";
 /** Center-dock card identifiers: todo/plan/agents render as live cards above the composer. */
 export type DockCardId = "todo" | "plan" | "agents";
 export type TranscriptDetail = "compact" | "full";
@@ -29,6 +31,9 @@ interface UiStore {
 	sidebarVisible: boolean;
 	panelVisible: boolean;
 	panelTab: PanelTab;
+	diffScope: DiffScope;
+	/** Application log viewer (moved out of the drawer: logs are diagnostics, not workspace). */
+	logsOpen: boolean;
 	/** Local file currently shown in the Files drawer. */
 	filePreviewPath: string | null;
 	commandPaletteOpen: boolean;
@@ -118,6 +123,11 @@ interface UiStore {
 	togglePanel: () => void;
 	toggleToolsExpandAll: () => void;
 	setPanelTab: (tab: PanelTab) => void;
+	setDiffScope: (scope: DiffScope) => void;
+	/** Open the drawer on Changes at a given scope (the transcript's "Review" entry). */
+	openChanges: (scope: DiffScope) => void;
+	openLogs: () => void;
+	closeLogs: () => void;
 	openFilePreview: (path: string) => void;
 	closeFilePreview: () => void;
 	/** Per-card collapse overrides for the center dock (absent = expanded). */
@@ -243,6 +253,8 @@ export const useUiStore = create<UiStore>()((set, get) => ({
 	sidebarVisible: true,
 	panelVisible: false,
 	panelTab: "diff",
+	diffScope: "repository",
+	logsOpen: false,
 	filePreviewPath: null,
 	commandPaletteOpen: false,
 	modelPickerOpen: false,
@@ -262,8 +274,8 @@ export const useUiStore = create<UiStore>()((set, get) => ({
 	toggleToolsExpandAll: () =>
 		set({ toolsExpandAll: { expanded: !get().toolsExpandAll.expanded, seq: get().toolsExpandAll.seq + 1 } }),
 	setPanelTab: tab => {
-		// Chat tabs are tool-free: only files + logs can exist there, so a
-		// force-open of the diff tab is a no-op.
+		// Chat tabs are tool-free: only files can exist there, so a force-open
+		// of the diff tab is a no-op.
 		if (tab === "diff") {
 			const activeKind = useTabsStore
 				.getState()
@@ -272,6 +284,13 @@ export const useUiStore = create<UiStore>()((set, get) => ({
 		}
 		set({ panelTab: tab, panelVisible: true });
 	},
+	setDiffScope: scope => set({ diffScope: scope }),
+	openChanges: scope => {
+		get().setPanelTab("diff");
+		if (get().panelTab === "diff") set({ diffScope: scope });
+	},
+	openLogs: () => set({ logsOpen: true }),
+	closeLogs: () => set({ logsOpen: false }),
 	openFilePreview: path => set({ filePreviewPath: path, panelTab: "files", panelVisible: true }),
 	closeFilePreview: () => set({ filePreviewPath: null }),
 	dockCollapsed: {},

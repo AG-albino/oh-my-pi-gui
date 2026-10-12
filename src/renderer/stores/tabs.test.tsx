@@ -28,6 +28,7 @@ import type {
 	TodoPhase,
 } from "../../shared/rpc-types";
 import { acceptsActiveTabEvents } from "../lib/tab-routing";
+import { tabSignalPresentation } from "../lib/tab-signal";
 import { useComposerStore } from "./composer";
 import { useExtensionUiStore } from "./extension-ui";
 import { useForkHandoffStore } from "./fork-handoff";
@@ -35,8 +36,8 @@ import { useMessagesStore } from "./messages";
 import { useModelStore } from "./model";
 import { usePlanApprovalStore } from "./plan-approval";
 import { useQueueStore } from "./queue";
-import { useSessionStore } from "./session";
-import { sessionRuntime, setFocusedSessionRuntime } from "./session-runtime-context";
+import { type SessionStore, useSessionStore } from "./session";
+import { sessionRuntime, sessionRuntimeStore, setFocusedSessionRuntime } from "./session-runtime-context";
 import { useSubagentsStore } from "./subagents";
 import { ensureTabRuntime } from "./tab-runtime";
 import {
@@ -741,6 +742,47 @@ describe("tabs store applyTabStatus", () => {
 
 		await useTabsStore.getState().switchTab("t1");
 		expect(useTabsStore.getState().tabs.find(tab => tab.id === "t1")?.unreadDone).toBe(false);
+	});
+
+	it("announces a background run's outcome, failure with its error, and stays quiet for the active tab", () => {
+		seedTabs();
+		useToastStore.setState({ toasts: [] });
+		const apply = useTabsStore.getState().applyTabStatus;
+
+		apply({ kind: "agent", tabId: "t1", cwd: "/beta", status: "running", title: "Beta work" });
+		apply({ kind: "agent", tabId: "t1", cwd: "/beta", status: "running", attention: "retrying" });
+		apply({
+			kind: "agent",
+			tabId: "t1",
+			cwd: "/beta",
+			status: "ready",
+			attention: "failed",
+			attentionDetail: "upstream overloaded",
+		});
+		apply({ kind: "agent", tabId: "t2", cwd: "/gamma", status: "running" });
+		apply({ kind: "agent", tabId: "t2", cwd: "/gamma", status: "ready" });
+		apply({ kind: "agent", tabId: "t0", cwd: "/alpha", status: "running" });
+		apply({ kind: "agent", tabId: "t0", cwd: "/alpha", status: "ready" });
+
+		expect(useToastStore.getState().toasts.map(toast => [toast.variant, toast.title ?? toast.message])).toEqual([
+			["error", "“Beta work” stopped with an error"],
+			["success", "“gamma” finished"],
+		]);
+		expect(useToastStore.getState().toasts[0]?.message).toBe("upstream overloaded");
+		const failed = useTabsStore.getState().tabs.find(tab => tab.id === "t1");
+		expect(failed && tabSignalPresentation(failed).labelKey).toBe("tabs.failed");
+	});
+
+	it("seeds a parked tab's retry row from main's snapshot, and clears it with the saga", () => {
+		seedTabs();
+		const retry = { attempt: 2, maxAttempts: 5, delayMs: 4000, errorMessage: "overloaded", startedAt: 1000 };
+		const session = () => sessionRuntimeStore<SessionStore>("t1", "session")?.getState();
+		useTabsStore.getState().applyTabStatus({ kind: "agent", tabId: "t1", cwd: "/beta", status: "running", retry });
+		expect(session()?.retryInfo).toEqual(retry);
+		useTabsStore
+			.getState()
+			.applyTabStatus({ kind: "agent", tabId: "t1", cwd: "/beta", status: "running", retry: null });
+		expect(session()?.retryInfo).toBeNull();
 	});
 
 	it("does not badge the active tab's own run settling", () => {
