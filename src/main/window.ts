@@ -40,6 +40,11 @@ const MIN_WIDTH = 800;
 const MIN_HEIGHT = 600;
 
 /** Work areas with the primary display first — it is the recentering target. */
+/** The window's page address for logs; a window can close while its renderer's events still arrive. */
+function windowUrl(win: BrowserWindow): string {
+	return win.isDestroyed() || win.webContents.isDestroyed() ? "" : win.webContents.getURL();
+}
+
 function displayWorkAreas(): Rect[] {
 	return [screen.getPrimaryDisplay().workArea, ...screen.getAllDisplays().map(display => display.workArea)];
 }
@@ -220,7 +225,7 @@ export class WindowManager {
 				{
 					source: "renderer-process",
 					message: `Renderer process exited: ${details.reason}`,
-					url: win.webContents.getURL(),
+					url: windowUrl(win),
 					details: {
 						reason: details.reason,
 						exitCode: details.exitCode,
@@ -230,6 +235,8 @@ export class WindowManager {
 				},
 				context(),
 			);
+			// The window closed along with its renderer: nothing to recover.
+			if (win.isDestroyed()) return;
 			if (this.#restartForChangedResources(record, { kind: "process-gone", reloadable: shouldReload })) return;
 			if (shouldReload) {
 				queueMicrotask(() => {
@@ -248,7 +255,7 @@ export class WindowManager {
 				{
 					source: "renderer-unresponsive",
 					message: "Renderer stopped responding",
-					url: win.webContents.getURL(),
+					url: windowUrl(win),
 				},
 				context(),
 			);
@@ -307,7 +314,7 @@ export class WindowManager {
 			{
 				source: "application-resources",
 				message: "Packaged application resources changed while omp was running; asking to restart",
-				url: record.win.webContents.getURL(),
+				url: windowUrl(record.win),
 				details: {
 					trigger: failure.kind,
 					launchInode: this.#launchResourceIdentity?.inode ?? -1,
