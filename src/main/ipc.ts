@@ -11,6 +11,8 @@ import type {
 	FsTreeEntry,
 	IpcBenchmarkRunOptions,
 	IpcBenchmarkRunResult,
+	IpcBrowserActionPayload,
+	IpcBrowserViewportPayload,
 	IpcCloseTabPayload,
 	IpcExtensionUiRespondPayload,
 	IpcFsListPayload,
@@ -46,6 +48,7 @@ import { parseLaunchProfile } from "../shared/launch-profile";
 import type { RpcCommand, RpcSessionState } from "../shared/rpc-types";
 import { requestQuit } from "./app-quit";
 import { BenchmarkRunner } from "./benchmark-runner";
+import type { BrowserHost } from "./browser-host";
 import { ensureDefaultWorkspace } from "./default-workspace";
 import { openInExternalEditor } from "./editor";
 import { mainT } from "./i18n";
@@ -67,6 +70,8 @@ import type { SpawnWindow, WindowManager } from "./window";
 
 export interface IpcDeps {
 	sidecarPool: SidecarPool;
+	/** Every agent tab's built-in browser panel. */
+	browserHost: BrowserHost;
 	sessionIndex: SessionIndex;
 	statsClient: StatsClient;
 	/** Demand-driven revive for the bundled stats server (no server → "exhausted"). */
@@ -103,6 +108,20 @@ function cwdFor(deps: IpcDeps, event: Electron.IpcMainInvokeEvent, tabId?: strin
 	if (tabId) return deps.sidecarPool.sidecarForTab(win, tabId)?.cwd ?? null;
 	return deps.sidecarPool.sidecarForWindow(win)?.cwd ?? deps.windowManager.recordFor(win)?.cwd ?? null;
 }
+
+const BROWSER_ACTIONS: ReadonlySet<string> = new Set<IpcBrowserActionPayload["action"]>([
+	"navigate",
+	"back",
+	"forward",
+	"reload",
+	"stop",
+	"select",
+	"close",
+	"devtools",
+	"external",
+	"find",
+	"stopFind",
+]);
 
 interface PrefsSchema {
 	[key: string]: unknown;
@@ -699,6 +718,46 @@ export function registerIpcHandlers(deps: IpcDeps): void {
 		return deps.sidecarPool.setTabView(win, payload.focusedTabId, payload.visibleTabIds, payload.split);
 	});
 
+	// Built-in browser. Every call names its tab, and the tab must belong to
+	// the calling window.
+	const browserTabWindow = (event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent, tabId: unknown) => {
+		const win = BrowserWindow.fromWebContents(event.sender);
+		if (!win || typeof tabId !== "string" || !deps.sidecarPool.sidecarForTab(win, tabId)) return null;
+		return win;
+	};
+	ipcMain.handle(IPC_COMMANDS.BROWSER_GET_STATE, (event, payload: { tabId: string }) => {
+		return browserTabWindow(event, payload?.tabId) ? deps.browserHost.state(payload.tabId) : null;
+	});
+	ipcMain.handle(IPC_COMMANDS.BROWSER_OPEN, (event, payload: { tabId: string; url: string }) => {
+		const win = browserTabWindow(event, payload?.tabId);
+		if (!win || typeof payload.url !== "string") return null;
+		return deps.browserHost.open(payload.tabId, win, payload.url);
+	});
+	ipcMain.handle(IPC_COMMANDS.BROWSER_ACTION, (event, payload: IpcBrowserActionPayload) => {
+		if (!browserTabWindow(event, payload?.tabId) || typeof payload.pageId !== "number") return null;
+		if (!BROWSER_ACTIONS.has(payload.action)) return null;
+		if (payload.action === "navigate" && typeof payload.url !== "string") return null;
+		if (payload.action === "find" && typeof payload.text !== "string") return null;
+		return deps.browserHost.action(payload.tabId, payload.pageId, payload);
+	});
+	ipcMain.on(IPC_COMMANDS.BROWSER_SET_VIEWPORT, (event, payload: IpcBrowserViewportPayload) => {
+		const win = browserTabWindow(event, payload?.tabId);
+		if (!win) return;
+		const bounds = payload.bounds;
+		const valid =
+			bounds !== null &&
+			typeof bounds === "object" &&
+			[bounds.x, bounds.y, bounds.width, bounds.height].every(value => Number.isFinite(value));
+		deps.browserHost.setViewport(payload.tabId, win, valid ? bounds : null);
+	});
+	ipcMain.handle(IPC_COMMANDS.BROWSER_CAPTURE, (event, payload: { tabId: string }) => {
+		return browserTabWindow(event, payload?.tabId) ? deps.browserHost.capture(payload.tabId) : null;
+	});
+	ipcMain.on(IPC_COMMANDS.BROWSER_SET_SHORTCUTS, (_event, payload: { chords: unknown }) => {
+		const chords = Array.isArray(payload?.chords) ? payload.chords : [];
+		deps.browserHost.setAppShortcuts(chords.filter((chord): chord is string => typeof chord === "string"));
+	});
+
 	// Boot reconciliation: the window's tabs in acquisition order (the initial
 	// sidecar is tab 0 — main minted its tabId at acquire).
 	ipcMain.handle(IPC_COMMANDS.GET_TABS, event => {
@@ -883,7 +942,7 @@ export function registerIpcHandlers(deps: IpcDeps): void {
 		}
 		prefsStore.set(payload.key, payload.value);
 		if (payload.key === "language" && (payload.value === "en" || payload.value === "zh")) {
-			createMenu(windowManager, deps.spawnWindow);
+			createMenu(windowManager, deps.spawnWindow, deps.browserHost);
 		}
 	});
 
@@ -1219,14 +1278,6 @@ function broadcast(windowManager: WindowManager, channel: string, data: unknown)
 /** Execute GUI-registered host tools. Returns undefined for unknown tools. */
 function executeGuiHostTool(name: string, args: Record<string, unknown>): string | undefined {
 	switch (name) {
-		case "gui_open_url": {
-			const url = typeof args.url === "string" ? args.url : "";
-			if (url.startsWith("https://") || url.startsWith("http://")) {
-				void shell.openExternal(url);
-				return "Opened in browser";
-			}
-			return `Invalid URL: ${url}`;
-		}
 		case "gui_notify": {
 			const title = typeof args.title === "string" ? args.title : "Notification";
 			const body = typeof args.body === "string" ? args.body : "";

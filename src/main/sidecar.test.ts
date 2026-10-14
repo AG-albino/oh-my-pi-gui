@@ -62,7 +62,7 @@ describe("SidecarManager", () => {
 		const binaryPath = path.join(tempDir, "fake-sidecar.ts");
 		await fs.writeFile(
 			binaryPath,
-			`#!/usr/bin/env bun\nimport * as fs from "node:fs/promises";\nimport { createInterface } from "node:readline";\nconst commands: unknown[] = [];\nconst rl = createInterface({ input: process.stdin });\nprocess.stdout.write(JSON.stringify({ type: "ready", protocolVersion: 2, supportedProtocolVersions: [1, 2], maxFrameBytes: 1048576, maxReassembledFrameBytes: 67108864 }) + "\\n");\nrl.on("line", line => {\n\tconst command = JSON.parse(line) as { id?: string; type: string; events?: string[] | null };\n\tcommands.push(command);\n\tvoid fs.writeFile(${JSON.stringify(commandLog)}, JSON.stringify(commands));\n\tprocess.stdout.write(JSON.stringify({ type: "response", id: command.id, command: command.type, success: true, data: {} }) + "\\n");\n});\n`,
+			`#!/usr/bin/env bun\nimport * as fs from "node:fs";\nimport { createInterface } from "node:readline";\nconst commands: unknown[] = [];\nconst rl = createInterface({ input: process.stdin });\nprocess.stdout.write(JSON.stringify({ type: "ready", protocolVersion: 2, supportedProtocolVersions: [1, 2], maxFrameBytes: 1048576, maxReassembledFrameBytes: 67108864 }) + "\\n");\nrl.on("line", line => {\n\tconst command = JSON.parse(line) as { id?: string; type: string; events?: string[] | null };\n\tcommands.push(command);\n\tfs.writeFileSync(${JSON.stringify(commandLog)}, JSON.stringify(commands));\n\tprocess.stdout.write(JSON.stringify({ type: "response", id: command.id, command: command.type, success: true, data: {} }) + "\\n");\n});\n`,
 		);
 		await fs.chmod(binaryPath, 0o755);
 
@@ -85,7 +85,7 @@ describe("SidecarManager", () => {
 					},
 					{ timeout: 5_000, interval: 25 },
 				)
-				.toHaveLength(3);
+				.toHaveLength(4);
 
 			const commands = JSON.parse(await fs.readFile(commandLog, "utf8")) as Array<{
 				type: string;
@@ -95,6 +95,7 @@ describe("SidecarManager", () => {
 				"negotiate_protocol",
 				"set_event_filter",
 				"set_ask_dialog",
+				"terminal_configure",
 			]);
 			expect(commands[1]?.events).toContain("message_update");
 		} finally {

@@ -25,6 +25,7 @@ import type {
 	RpcLiveFrame,
 	RpcReadyFrame,
 	RpcResponse,
+	RpcTerminalFrame,
 	SessionInfoUpdateFrame,
 	SessionSettledFrame,
 	SidecarRestartProgress,
@@ -32,7 +33,7 @@ import type {
 	SidecarStatusPayload,
 	SubagentFrame,
 } from "../shared/rpc-types";
-import { BTW_FRAME_TYPES, LIVE_FRAME_TYPES } from "../shared/rpc-types";
+import { BTW_FRAME_TYPES, LIVE_FRAME_TYPES, TERMINAL_FRAME_TYPES } from "../shared/rpc-types";
 import { EventBatcher } from "./event-batcher";
 import { attachNdjsonParser, supportsRpcProtocolV2 } from "./rpc-bridge";
 import { RpcClient } from "./rpc-client";
@@ -199,6 +200,8 @@ export interface SidecarEvents {
 	hostUriRequest: (request: HostUriRequest) => void;
 	subagentFrame: (frame: SubagentFrame) => void;
 	liveFrame: (frame: RpcLiveFrame) => void;
+	/** Terminal frames, forwarded for every tab (not only visible ones): output must not be lost. */
+	terminalFrame: (frame: RpcTerminalFrame) => void;
 	btwFrame: (frame: RpcBtwFrame) => void;
 	modelCatalogUpdate: (frame: ModelCatalogUpdateFrame) => void;
 	commandsUpdate: (commands: unknown[]) => void;
@@ -501,6 +504,10 @@ export class SidecarManager extends EventEmitter {
 			this.emit("frame", obj);
 			return;
 		}
+		if (TERMINAL_FRAME_TYPES.has(obj.type as string)) {
+			this.emit("terminalFrame", obj as unknown as RpcTerminalFrame);
+			return;
+		}
 		if (BTW_FRAME_TYPES.has(obj.type as string)) {
 			this.emit("btwFrame", obj as unknown as RpcBtwFrame);
 			this.emit("frame", obj);
@@ -546,6 +553,12 @@ export class SidecarManager extends EventEmitter {
 					.catch(() => {});
 				// Opt into upstream's `ask` protocol — the GUI renders ask dialogs.
 				void this.#rpcClient.command({ type: "set_ask_dialog", enabled: true }).catch(() => {});
+				// `pty: true` bash runs in the terminal panel, where the user can answer it,
+				// and the agent's `terminal` tool reads the panel's terminals and starts
+				// long-lived commands (dev servers) there.
+				void this.#rpcClient
+					.command({ type: "terminal_configure", interactiveCommands: true, agentTools: true })
+					.catch(() => {});
 			}
 			announceReady();
 		};

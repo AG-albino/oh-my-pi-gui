@@ -232,6 +232,15 @@ export type RpcCommand =
 	| { id?: string; type: "live_start"; voice?: string; instructions?: string }
 	| { id?: string; type: "live_stop" }
 	| { id?: string; type: "live_mute"; muted?: boolean }
+	| { id?: string; type: "terminal_open"; cols?: number; rows?: number; cwd?: string }
+	| { id?: string; type: "terminal_input"; terminalId: string; data: string }
+	| { id?: string; type: "terminal_resize"; terminalId: string; cols: number; rows: number }
+	| { id?: string; type: "terminal_close"; terminalId: string }
+	| { id?: string; type: "terminal_list" }
+	| { id?: string; type: "terminal_snapshot"; terminalId: string }
+	| { id?: string; type: "terminal_configure"; interactiveCommands: boolean; agentTools?: boolean }
+	| { id?: string; type: "browser_host_start" }
+	| { id?: string; type: "browser_host_stop" }
 	| { id?: string; type: "debug"; params: RpcDebugParams }
 	| { id?: string; type: "collab_start"; relayUrl?: string; view?: boolean }
 	| { id?: string; type: "collab_join"; link: string }
@@ -496,6 +505,83 @@ export const LIVE_FRAME_TYPES: ReadonlySet<string> = new Set<RpcLiveFrame["type"
 	"live_transcript",
 	"live_end",
 ]);
+
+// ============================================================================
+// Terminals (sidecar-hosted PTYs; upstream shape: coding-agent rpc-terminal.ts)
+// ============================================================================
+
+/** One sidecar-hosted terminal. */
+export interface RpcTerminalInfo {
+	terminalId: string;
+	/**
+	 * `shell`: a login shell the user opened; `command`: a `pty: true` bash call
+	 * waiting on the user; `background`: a long-lived command the agent started
+	 * with its `terminal` tool (a dev server, a watcher).
+	 */
+	kind: "shell" | "command" | "background";
+	/** Shell name, or the command's first line. */
+	title: string;
+	cwd: string;
+	running: boolean;
+	exitCode?: number;
+	pid?: number;
+	cols: number;
+	rows: number;
+}
+
+/** A terminal exists; `reveal` asks the GUI to show it (an agent command waits for the user). */
+export interface RpcTerminalOpenedFrame {
+	type: "terminal_opened";
+	terminal: RpcTerminalInfo;
+	reveal?: boolean;
+}
+
+/** Raw PTY output; `seq` counts characters sent for this terminal through the end of `data`. */
+export interface RpcTerminalOutputFrame {
+	type: "terminal_output";
+	terminalId: string;
+	data: string;
+	seq: number;
+}
+
+/** The terminal's process ended; the terminal stays until closed. */
+export interface RpcTerminalExitFrame {
+	type: "terminal_exit";
+	terminalId: string;
+	exitCode?: number;
+	cancelled: boolean;
+	timedOut: boolean;
+}
+
+export interface RpcTerminalClosedFrame {
+	type: "terminal_closed";
+	terminalId: string;
+}
+
+export type RpcTerminalFrame =
+	| RpcTerminalOpenedFrame
+	| RpcTerminalOutputFrame
+	| RpcTerminalExitFrame
+	| RpcTerminalClosedFrame;
+
+export const TERMINAL_FRAME_TYPES: ReadonlySet<string> = new Set<RpcTerminalFrame["type"]>([
+	"terminal_opened",
+	"terminal_output",
+	"terminal_exit",
+	"terminal_closed",
+]);
+
+/** `terminal_snapshot` result: recent output through `seq`; later frames have a larger `seq`. */
+export interface RpcTerminalSnapshot {
+	terminal: RpcTerminalInfo;
+	data: string;
+	seq: number;
+}
+
+/** `browser_host_start` result: the relay websocket the GUI dials as the extension. */
+export interface RpcBrowserHostInfo {
+	extensionUrl: string;
+}
 
 /** One /btw turn (upstream wire shape: `session/btw-history`). */
 export interface BtwHistoryTurn {
@@ -1941,6 +2027,7 @@ export type OutboundFrame =
 	| SessionInfoUpdateFrame
 	| ConfigUpdateFrame
 	| RpcLiveFrame
+	| RpcTerminalFrame
 	| ModelCatalogUpdateFrame
 	| ExtensionErrorFrame;
 

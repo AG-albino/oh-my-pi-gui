@@ -3,6 +3,7 @@
  * Type-safe contract for the contextBridge API.
  */
 
+import type { KeyEventLike } from "./chord";
 import type { LaunchProfile } from "./launch-profile";
 import type { SessionModelOverride } from "./model-restore";
 import type {
@@ -30,6 +31,7 @@ import type {
 	RpcSecurityDispositionStatus,
 	RpcSecurityTargetInput,
 	RpcSshHostInput,
+	RpcTerminalFrame,
 	SessionInfoUpdateFrame,
 	SidecarStatus,
 	SidecarStatusPayload,
@@ -91,6 +93,12 @@ export const IPC_EVENTS = {
 	PROGRESS_SET: "progress:set",
 	/** Auto-update status machine push (idle/checking/available/downloading/downloaded/not-available/error) */
 	UPDATER_STATUS: "updater:status",
+	/** Sidecar terminal frame for any tab of the window, visible or not (IpcTerminalFramePayload). */
+	TERMINAL_FRAME: "terminal:frame",
+	/** A tab's built-in browser changed: pages, navigation, agent link (IpcBrowserState). */
+	BROWSER_STATE: "browser:state",
+	/** A key the focused built-in browser page handed to the app (IpcBrowserKeyPayload). */
+	BROWSER_KEY: "browser:key",
 } as const;
 
 // ============================================================================
@@ -202,6 +210,18 @@ export const IPC_COMMANDS = {
 	UPDATER_GET_STATUS: "updater:getStatus",
 	/** Current app version (settings → updates row) */
 	UPDATER_VERSION: "updater:version",
+	/** A tab's built-in browser state (IpcBrowserState). */
+	BROWSER_GET_STATE: "browser:get-state",
+	/** Open a page the user asked for in a tab's built-in browser. */
+	BROWSER_OPEN: "browser:open",
+	/** Navigate, go back/forward, reload/stop, inspect, or open externally (IpcBrowserActionPayload). */
+	BROWSER_ACTION: "browser:action",
+	/** Place (or hide, with null bounds) a tab's active page over the panel's viewport. */
+	BROWSER_SET_VIEWPORT: "browser:set-viewport",
+	/** Still image of a tab's active page, shown while a dialog covers the live view. */
+	BROWSER_CAPTURE: "browser:capture",
+	/** The app keymap's chords, so a focused page hands them to the app instead of keeping them. */
+	BROWSER_SET_SHORTCUTS: "browser:set-shortcuts",
 } as const;
 
 export type RuntimeErrorSource =
@@ -782,6 +802,75 @@ export interface IpcTabRetry {
 /** TAB_STATUS push payload — a full tab snapshot from any tab, active or background. */
 export type IpcTabStatusPayload = IpcTabInfo;
 
+/** TERMINAL_FRAME push: one sidecar terminal frame and the tab it belongs to. */
+export interface IpcTerminalFramePayload {
+	tabId: string;
+	frame: RpcTerminalFrame;
+}
+
+/** One page in a tab's built-in browser. */
+export interface IpcBrowserPage {
+	/** Stable for the page's life (its webContents id). */
+	pageId: number;
+	url: string;
+	title: string;
+	loading: boolean;
+	canGoBack: boolean;
+	canGoForward: boolean;
+	/** Who opened it: the agent's browser tool, or the user. */
+	openedBy: "agent" | "user";
+	/** The agent is driving the page right now: it opened it, or adopted one the user opened. */
+	agentDriving: boolean;
+	/** The last main-frame load failure, cleared by the next navigation. */
+	error?: string;
+	/** Find in page: the current match (1-based; 0 while none is selected) and the total. */
+	find?: { active: number; matches: number };
+}
+
+/** A tab's built-in browser: its pages and the active one. */
+export interface IpcBrowserState {
+	tabId: string;
+	pages: IpcBrowserPage[];
+	activePageId: number | null;
+	/** The agent can reach this browser (its sidecar serves the relay and the GUI is linked). */
+	agentLinked: boolean;
+}
+
+export type IpcBrowserAction =
+	| { action: "navigate"; url: string }
+	| { action: "back" }
+	| { action: "forward" }
+	| { action: "reload" }
+	| { action: "stop" }
+	| { action: "select" }
+	| { action: "close" }
+	| { action: "devtools" }
+	| { action: "external" }
+	/** Search the page: a new search, or with `next` the following match of the current one. Empty text clears it. */
+	| { action: "find"; text: string; backward?: boolean; next?: boolean }
+	/** End the search, keeping the current match selected; `focusPage` gives the page the keyboard back. */
+	| { action: "stopFind"; focusPage?: boolean };
+
+export type IpcBrowserActionPayload = { tabId: string; pageId: number } & IpcBrowserAction;
+
+/**
+ * BROWSER_KEY push. Keystrokes in a focused page go to the page, not the app's
+ * window, so the host hands back the ones that belong to the app: a chord of
+ * the app keymap (replayed as a keydown), ⌘L/Ctrl+L for the address bar, and
+ * the Edit menu's Find commands for the page on screen.
+ */
+export type IpcBrowserKeyPayload =
+	| { tabId: string; kind: "shortcut"; key: KeyEventLike }
+	| { tabId: string; kind: "focusAddress" }
+	| { tabId: string; kind: "find" }
+	| { tabId: string; kind: "findNext"; backward: boolean };
+
+/** Where the active page sits, in the window's CSS pixels; null hides it (panel closed, dialog open). */
+export interface IpcBrowserViewportPayload {
+	tabId: string;
+	bounds: { x: number; y: number; width: number; height: number } | null;
+}
+
 /** Full sidecar event tagged with the tab that emitted it. The preload drops
  * envelopes from a previously active tab after SET_ACTIVE_TAB resolves. */
 export interface IpcActiveTabEnvelope<T> {
@@ -1155,6 +1244,18 @@ export interface OmpApi {
 		onMenuAction(callback: (action: MenuAction, payload?: MenuActionPayload) => void): () => void;
 		onDeepLink(callback: (link: DeepLinkPayload) => void): () => void;
 		onUpdaterStatus(callback: (status: UpdateStatus) => void): () => void;
+		onTerminalFrame(callback: (payload: IpcTerminalFramePayload) => void): () => void;
+		onBrowserState(callback: (state: IpcBrowserState) => void): () => void;
+		onBrowserKey(callback: (payload: IpcBrowserKeyPayload) => void): () => void;
+	};
+	browser: {
+		getState(tabId: string): Promise<IpcBrowserState | null>;
+		open(tabId: string, url: string): Promise<IpcBrowserState | null>;
+		action(payload: IpcBrowserActionPayload): Promise<IpcBrowserState | null>;
+		setViewport(payload: IpcBrowserViewportPayload): void;
+		capture(tabId: string): Promise<string | null>;
+		/** Fire-and-forget: the chords the app keymap dispatches. */
+		setShortcuts(chords: string[]): void;
 	};
 	updater: {
 		check(): Promise<UpdateStatus>;

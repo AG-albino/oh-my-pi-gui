@@ -23,6 +23,7 @@ import { useRuntimeTabId } from "../stores/session-runtime-context";
 import { useUiStore } from "../stores/ui";
 import { saveGuiPreference } from "./display-preferences";
 import { useT } from "./i18n";
+import { openLink } from "./open-link";
 import { PREVIEW_HEIGHT_LG, PREVIEW_SCROLL_CODE } from "./preview";
 import { remarkDollarGuard } from "./remark-dollar-guard";
 import { remarkLatexMath } from "./remark-latex-math";
@@ -195,7 +196,7 @@ function ExternalLink({ href, children, ...props }: ComponentPropsWithoutRef<"a"
 				e.preventDefault();
 				const filePath = filePathFromHref(href);
 				if (filePath) useUiStore.getState().openFilePreview(filePath);
-				else window.omp.system.openExternal(href);
+				else openLink(href, e);
 			}}
 			className="text-[var(--omp-md-link)] underline decoration-[var(--omp-md-link-url)] hover:decoration-[var(--omp-md-link)]"
 		>
@@ -467,7 +468,7 @@ function RemoteMarkdownImage({ src, alt }: { src: string; alt: string }) {
 				href={src}
 				onClick={event => {
 					event.preventDefault();
-					window.omp.system.openExternal(src);
+					openLink(src, event);
 				}}
 				className="shrink-0 truncate font-mono text-omp-xs text-[var(--omp-md-link)] underline decoration-[var(--omp-md-link-url)] hover:decoration-[var(--omp-md-link)]"
 			>

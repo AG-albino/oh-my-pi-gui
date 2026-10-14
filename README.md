@@ -42,6 +42,7 @@ The distinctive part is not just a chat window: it is being able to **separate p
 | **Split views & windows** | Place two sessions side by side or stacked, resize the divider, and use multiple windows. Restore the open/active tab layout across restarts. | A split contains **two panes**, not an unlimited pane grid. |
 | **Chat vs. Agent** | Use global, tool-free **Chat** for conversation and workspace **Agent** sessions for coding tasks. | Chat history stays separate from project groups and workspace operations. |
 | **Readable execution** | Inspect diffs and Bash, read, grep, and task calls in dedicated renderers; follow streaming Markdown, highlighted code, collapsible thinking, math, Mermaid, and images. | Tool output remains inspectable alongside the conversation rather than being flattened into plain chat text. |
+| **Terminal & browser** | The side panel's **Terminal** view opens shells in the project folder; agent commands that wait for input (`pty: true`) run there so you can answer them, the agent can read what your terminals show, and dev servers it starts get their own terminal you can watch or close. The **Browser** view is a full browser — address bar, several pages, DevTools — where the agent's `browser` tool opens and drives its pages (or works on the page you have open) so you can watch or take over; links in replies open there too (⌘-click for your default browser). | Terminals and pages belong to their tab and close with it. Browser sign-ins persist and are shared by all tabs, so the agent's pages act as you. The agent still uses another browser when a call names one (`app.path`, `app.cdp_url`, the Chrome relay) or `browser.cdpUrl` is set. |
 | **Background coordination** | Follow `wait` jobs, inspect `proc://` task and service state, and review `agent://` messages and process controls in compact structured cards. | Coordination details stay bounded and expandable; legacy `hub` transcripts remain readable. |
 | **Plans, Todos & queues** | Review plans and approvals, queue follow-up messages, and monitor bounded Todos/Agents dock cards. Expand a card for a focused full list. | Compact summaries keep large task lists from taking over the conversation. |
 | **Agent Hub** | Manage agent definitions, enable/disable agents, set model and prewalk overrides, inspect progress/logs, abort work, and wake parked agents. | Available actions follow the agent's current state; role assignments and per-agent overrides serve different purposes. |
@@ -327,10 +328,11 @@ Releases belong only to [`nornzach/oh-my-pi-gui`](https://github.com/nornzach/oh
 
 | 领域 | 可以怎样使用 | 范围与边界 |
 |---|---|---|
-| **独立会话** | 最多运行 **10 个标签页**，各自拥有 sidecar、会话和消息队列；后台任务可继续运行，也可新建 Git worktree 标签页。 | 独立会话运行时不是操作系统安全边界；worktree 需要可用的 Git。 |
+| **独立会话** | 标签页数量不限，各自拥有 sidecar、会话和消息队列（恢复的标签页在打开时才启动）；后台任务可继续运行，也可新建 Git worktree 标签页。 | 独立会话运行时不是操作系统安全边界；worktree 需要可用的 Git。 |
 | **分屏与多窗口** | 两段会话可左右或上下排列，分隔条可调整，也可使用多个窗口；重启后恢复已打开及选中的标签布局。 | 每个分屏为**双面板**，不是无限面板网格。 |
 | **Chat 与 Agent** | 全局、无工具的 **Chat** 用于交流；项目工作区中的 **Agent** 会话用于编码任务。 | Chat 历史与项目分组、工作区操作保持分离。 |
 | **可读的执行过程** | 专用视图呈现 diff、Bash、read、grep、task；支持流式 Markdown、代码高亮、可折叠思考块、公式、Mermaid 与图片。 | 工具输出可在对话旁直接检查，而不是全部压成普通聊天文本。 |
+| **终端与浏览器** | 侧边面板的 **终端** 视图在项目目录中打开 shell；需要输入的 Agent 命令（`pty: true`）也在这里运行，由你直接作答；Agent 能读取你终端里显示的内容，它启动的开发服务器会有独立的终端，你可以旁观或关闭。**浏览器** 视图是完整的浏览器——地址栏、多个页面、DevTools——Agent 的 `browser` 工具在这里打开并操作页面（也可以直接使用你已打开的页面），你可以旁观或随时接手；回复中的链接也在这里打开（⌘ 点击则用默认浏览器打开）。 | 终端与页面属于各自的标签页，随标签页关闭。浏览器登录状态会保留并由所有标签页共享，因此 Agent 的页面以你的身份操作。调用明确指定其他浏览器（`app.path`、`app.cdp_url`、Chrome relay）或设置了 `browser.cdpUrl` 时，Agent 仍使用对应的浏览器。 |
 | **后台协作状态** | `wait` 任务、`proc://` 进程与服务状态、`agent://` 消息及进程控制操作均以紧凑结构化卡片呈现。 | 详情保持有边界并可展开；历史 `hub` 记录仍可正常阅读。 |
 | **计划、待办与队列** | 审查计划与审批、排队发送后续消息，通过有高度约束的 Todos/Agents Dock 卡片查看状态；展开单张卡片查看完整列表。 | 大量任务以紧凑摘要呈现，不占满对话区域。 |
 | **Agent Hub** | 管理 Agent 定义、启用/停用、覆盖模型与 prewalk 设置，查看进度和日志、中止任务、唤醒已停驻的 Agent。 | 可用操作取决于 Agent 当前状态；角色模型分配与单个 Agent 覆盖是不同层次的控制。 |

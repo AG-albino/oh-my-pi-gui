@@ -7,7 +7,9 @@ import { useTabsStore } from "./tabs";
 
 export type { ThemeMode };
 
-export type PanelTab = "diff" | "files";
+export type PanelTab = "diff" | "files" | "terminal" | "browser";
+/** Drawer tabs that exist in a tool-free chat tab: no diffs, shells, or agent browsing without tools. */
+export const CHAT_PANEL_TABS: ReadonlySet<PanelTab> = new Set(["files"]);
 /** What the Changes view compares: the checkout, this session's edits, their timeline, or virtual artifacts. */
 export type DiffScope = "repository" | "current" | "timeline" | "artifacts";
 /** Center-dock card identifiers: todo/plan/agents render as live cards above the composer. */
@@ -275,8 +277,8 @@ export const useUiStore = create<UiStore>()((set, get) => ({
 		set({ toolsExpandAll: { expanded: !get().toolsExpandAll.expanded, seq: get().toolsExpandAll.seq + 1 } }),
 	setPanelTab: tab => {
 		// Chat tabs are tool-free: only files can exist there, so a force-open
-		// of the diff tab is a no-op.
-		if (tab === "diff") {
+		// of any other drawer tab is a no-op.
+		if (!CHAT_PANEL_TABS.has(tab)) {
 			const activeKind = useTabsStore
 				.getState()
 				.tabs.find(t2 => t2.id === useTabsStore.getState().activeTabId)?.kind;

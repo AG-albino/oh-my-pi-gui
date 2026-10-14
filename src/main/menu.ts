@@ -4,6 +4,7 @@
 import { app, Menu, type MenuItemConstructorOptions, shell } from "electron";
 import { nativeAccelerator } from "../shared/hotkeys";
 import { IPC_EVENTS, type MenuAction } from "../shared/ipc-types";
+import type { BrowserHost } from "./browser-host";
 import { getMainLanguage, mainT } from "./i18n";
 import type { SpawnWindow, WindowManager } from "./window";
 
@@ -21,8 +22,10 @@ function sendMenuAction(windowManager: WindowManager, spawnWindow: SpawnWindow, 
 	});
 }
 
-export function createMenu(windowManager: WindowManager, spawnWindow: SpawnWindow): void {
+export function createMenu(windowManager: WindowManager, spawnWindow: SpawnWindow, browserHost: BrowserHost): void {
 	const language = getMainLanguage();
+	// Find next/previous: ⌘G on macOS; elsewhere F3, since Ctrl+G opens the composer's editor.
+	const mac = process.platform === "darwin";
 	// Chord rule: a shortcut the renderer keymap owns must NOT also be a menu
 	// accelerator. Electron resolves menu accelerators before the keydown reaches
 	// the webContents, so the duplicate would fire while the user's remap of the
@@ -116,6 +119,22 @@ export function createMenu(windowManager: WindowManager, spawnWindow: SpawnWindo
 				{ role: "copy" },
 				{ role: "paste" },
 				{ role: "selectAll" },
+				{ type: "separator" },
+				{
+					label: mainT("menu.find", language),
+					accelerator: nativeAccelerator("browser.find"),
+					click: () => browserHost.find(windowManager.getTargetWindow(), "find"),
+				},
+				{
+					label: mainT("menu.findNext", language),
+					accelerator: mac ? "Cmd+G" : "F3",
+					click: () => browserHost.find(windowManager.getTargetWindow(), "next"),
+				},
+				{
+					label: mainT("menu.findPrevious", language),
+					accelerator: mac ? "Cmd+Shift+G" : "Shift+F3",
+					click: () => browserHost.find(windowManager.getTargetWindow(), "previous"),
+				},
 			],
 		},
 		{

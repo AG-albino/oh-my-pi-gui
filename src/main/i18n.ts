@@ -4,6 +4,15 @@ import Store from "electron-store";
 export type MainLanguage = "en" | "zh";
 
 type MainTextKey =
+	| "browser.back"
+	| "browser.copyImage"
+	| "browser.copyImageAddress"
+	| "browser.copyLink"
+	| "browser.forward"
+	| "browser.inspect"
+	| "browser.openLinkExternally"
+	| "browser.openLinkInNewPage"
+	| "browser.reload"
 	| "dialog.openProject"
 	| "menu.about"
 	| "menu.addToDictionary"
@@ -25,6 +34,9 @@ type MainTextKey =
 	| "crash.title"
 	| "menu.documentation"
 	| "menu.edit"
+	| "menu.find"
+	| "menu.findNext"
+	| "menu.findPrevious"
 	| "menu.exportHtml"
 	| "menu.file"
 	| "menu.handoff"
@@ -71,6 +83,15 @@ type MainTextKey =
 	| "updates.unsupportedArchitecture";
 
 const TEXT: Record<MainTextKey, Record<MainLanguage, string>> = {
+	"browser.back": { en: "Back", zh: "后退" },
+	"browser.copyImage": { en: "Copy Image", zh: "复制图片" },
+	"browser.copyImageAddress": { en: "Copy Image Address", zh: "复制图片地址" },
+	"browser.copyLink": { en: "Copy Link Address", zh: "复制链接地址" },
+	"browser.forward": { en: "Forward", zh: "前进" },
+	"browser.inspect": { en: "Inspect Element", zh: "检查元素" },
+	"browser.openLinkExternally": { en: "Open Link in Default Browser", zh: "在默认浏览器中打开链接" },
+	"browser.openLinkInNewPage": { en: "Open Link in New Page", zh: "在新页面中打开链接" },
+	"browser.reload": { en: "Reload", zh: "重新加载" },
 	"dialog.openProject": { en: "Open project", zh: "打开项目" },
 	"menu.about": { en: "About omp", zh: "关于 omp" },
 	"menu.addToDictionary": { en: "Add to dictionary", zh: "添加到词典" },
@@ -89,6 +110,9 @@ const TEXT: Record<MainTextKey, Record<MainLanguage, string>> = {
 	"menu.debugConsole": { en: "Debug Console", zh: "调试控制台" },
 	"menu.documentation": { en: "Documentation", zh: "文档" },
 	"menu.edit": { en: "Edit", zh: "编辑" },
+	"menu.find": { en: "Find in Page…", zh: "在页面中查找…" },
+	"menu.findNext": { en: "Find Next", zh: "查找下一个" },
+	"menu.findPrevious": { en: "Find Previous", zh: "查找上一个" },
 	"menu.exportHtml": { en: "Export HTML", zh: "导出 HTML" },
 	"menu.file": { en: "File", zh: "文件" },
 	"menu.handoff": { en: "Handoff", zh: "交接（Handoff）" },

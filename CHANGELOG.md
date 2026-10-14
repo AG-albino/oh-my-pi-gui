@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Terminal in the side panel**: the ⌘J panel gains a **Terminal** view that opens a shell in the tab's folder (**+** opens more). Agent commands that wait for input (`pty: true`) open there with a hint, so you type the answer and the agent gets the result.
+- **The agent works with your terminals**: ask about "the error in my terminal" and it reads what your shell shows; dev servers and watchers it starts run in their own terminal (robot icon) that you can watch or close, and it can stop them again.
+- **Browser in the side panel**: a **Browser** view with an address bar (a URL, a local port like `localhost:5173`, a file path, or a search), back/forward/reload, several pages, DevTools and open-in-default-browser. The agent's `browser` tool opens and drives its pages there instead of a separate Chromium, so you can watch it work or take over; the panel switches to a page the agent opens in front, while pages it opens in the background leave your view alone. Sign-ins persist across restarts.
+- **The agent can work on the page you have open**: ask it to "check this page" and it uses your page in the panel instead of opening a copy, then hands it back. Pages the agent is driving show an **Agent** badge.
+- **Links open beside your work**: links in replies and tool output open in the Browser view; ⌘-click (Ctrl-click) opens them in your default browser.
+- The side panel widens to fit the Browser view, and a dialog or menu over the panel shows a still of the page instead of being hidden behind it.
+- **Browser keys work like a browser**: with a page focused, ⌘R reloads the page (not the app), ⌘L jumps to the address bar, ⌘[ / ⌘] go back and forward, and ⌥⌘I opens DevTools (Ctrl/Alt/F5/F12 equivalents elsewhere); app shortcuts such as ⌘J keep working.
+- Web addresses a command prints in the Terminal view, like a dev server's `Local:` URL, are links that open in the Browser view.
+- Notifications move beside the Browser view instead of appearing behind the page.
+- **Find in page**: ⌘F (Edit → Find in Page…) searches the page the Browser view shows, with a match count; Enter / ⇧Enter or ⌘G / ⇧⌘G (F3 / ⇧F3) step through matches and Esc closes the bar. A web app with its own ⌘F, like an online editor, keeps it.
+- **Pages rest when out of sight**: pages you are not looking at — in the background, with the side panel closed, or with the window minimized or covered — sleep like a browser's background tabs and stop using CPU. A page the agent is working in stays awake until it has been idle for 30 seconds, even with the window covered or minimized.
+- Pages the agent works in behind the scenes get a desktop-size window (1280×800 at least), so a narrow side panel never hands it a phone layout.
+
+### Fixed
+
+- In narrow windows the side panel drawer was see-through over the title bar, and its header buttons could drag the window instead of responding to clicks.
+
 ## [0.9.20] - 2026-10-12
 
 ### Changed

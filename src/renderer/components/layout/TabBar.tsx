@@ -32,6 +32,7 @@ import { useSessionList } from "../../hooks/use-session-list";
 import { basename, cx } from "../../lib/format";
 import { useT } from "../../lib/i18n";
 import { sessionHasContent } from "../../lib/session-title";
+import { scrollStripOnWheel } from "../../lib/strip-scroll";
 import { type LiveTabRuntime, performTabClose, tabNeedsCloseConfirm } from "../../lib/tab-close";
 import { tabSignalPresentation } from "../../lib/tab-signal";
 import type { ComposerStore } from "../../stores/composer";
@@ -363,10 +364,7 @@ export function TabBar({ confirmCloseMs = CONFIRM_CLOSE_MS }: { confirmCloseMs?:
 					role="tablist"
 					aria-label={t("tabs.strip")}
 					className="omp-tab-scroller flex min-w-0 items-center gap-1 overflow-x-auto"
-					onWheel={event => {
-						// A plain mouse wheel only scrolls vertically; map it onto the strip.
-						if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) event.currentTarget.scrollLeft += event.deltaY;
-					}}
+					onWheel={scrollStripOnWheel}
 				>
 					{tabs.map(tab => {
 						const visible = visibleTabIds({ activeTabId, split }).includes(tab.id);

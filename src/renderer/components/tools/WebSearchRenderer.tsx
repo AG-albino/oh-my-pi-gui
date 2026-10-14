@@ -2,6 +2,7 @@ import { Globe } from "lucide-react";
 import { resultText } from "../../lib/format";
 import { translate, useT } from "../../lib/i18n";
 import { MarkdownRenderer } from "../../lib/markdown";
+import { openLink } from "../../lib/open-link";
 import { resultDetails } from "./result";
 import type { ToolRendererProps } from "./ToolCard";
 
@@ -151,7 +152,7 @@ export function WebSearchRenderer({ args, result, isPartial }: ToolRendererProps
 										return openable ? (
 											<button
 												type="button"
-												onClick={() => void window.omp.system.openExternal(item.url as string)}
+												onClick={event => openLink(item.url as string, event)}
 												className="min-w-0 flex-1 truncate text-left text-omp-sm font-medium text-[var(--omp-link)] hover:underline"
 												title={item.url}
 											>

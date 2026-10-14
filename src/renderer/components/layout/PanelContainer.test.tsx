@@ -16,6 +16,11 @@ import { useTabsStore } from "../../stores/tabs";
 import { useUiStore } from "../../stores/ui";
 import { PanelContainer } from "./PanelContainer";
 
+// xterm's bundle (the Terminal view) reads `self` when it loads, before any test code runs.
+vi.hoisted(() => {
+	(globalThis as Record<string, unknown>).self = globalThis;
+});
+
 const { document, window, Event, HTMLElement, Node } = parseHTML("<html><body></body></html>");
 
 const globals = globalThis as Record<string, unknown>;
@@ -109,8 +114,10 @@ describe("PanelContainer chat tab filter", () => {
 
 		const labels = drawerTabLabels();
 		expect(labels).toContain("Files");
-		// Diff is agent-only; todo/plan/agents/queue live in the center dock now.
-		expect(labels).not.toContain("Changes");
+		// Diff, shells, and agent browsing need tools; todo/plan/agents/queue live in the center dock now.
+		for (const agentOnly of ["Changes", "Terminal", "Browser"]) {
+			expect(labels).not.toContain(agentOnly);
+		}
 	});
 
 	it("falls back to the files surface when the agent-only diff tab was selected before entering chat", async () => {
@@ -127,7 +134,7 @@ describe("PanelContainer chat tab filter", () => {
 		await mount(<PanelContainer />);
 
 		const labels = drawerTabLabels();
-		for (const visible of ["Changes", "Files"]) {
+		for (const visible of ["Changes", "Files", "Terminal", "Browser"]) {
 			expect(labels).toContain(visible);
 		}
 		// Live-execution tabs moved to the center dock, logs to their own dialog.

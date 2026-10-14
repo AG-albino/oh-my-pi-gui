@@ -54,6 +54,7 @@ import {
 	type RpcCommand,
 	type RpcLiveFrame,
 	type RpcResponse,
+	type RpcTerminalFrame,
 	type SessionInfoUpdateFrame,
 	type SessionSettledFrame,
 	type SidecarStatus,
@@ -164,6 +165,16 @@ export class SidecarPool {
 		null;
 	/** Main-process persistence hook. The primary window installs this at startup. */
 	onWindowTabsChanged: ((win: BrowserWindow, layout: PersistedTabLayout | null) => void) | null = null;
+	/**
+	 * Main-process services bound to a tab's sidecar process (the browser panel
+	 * host): `ready` on every boot or restart, `down` whenever it stops serving,
+	 * `released` once the tab is gone for good.
+	 */
+	sidecarLifecycle: {
+		ready(tab: { tabId: string; kind: "agent" | "chat"; sidecar: SidecarManager; win: BrowserWindow }): void;
+		down(tabId: string): void;
+		released(tabId: string): void;
+	} | null = null;
 
 	constructor(factory: SidecarFactory) {
 		this.#factory = factory;
@@ -264,7 +275,13 @@ export class SidecarPool {
 	#wireLight(entry: PoolEntry): void {
 		const { sidecar, win } = entry;
 		sidecar.on("status", (payload: SidecarStatusPayload) => {
+			const wasReady = entry.status === "ready";
 			entry.status = payload.status;
+			if (payload.status === "ready") {
+				this.sidecarLifecycle?.ready({ tabId: entry.tabId, kind: entry.kind, sidecar, win });
+			} else if (wasReady) {
+				this.sidecarLifecycle?.down(entry.tabId);
+			}
 			// A restart/exit kills any in-flight run along with the process.
 			if (payload.status !== "ready") {
 				entry.running = false;
@@ -274,6 +291,11 @@ export class SidecarPool {
 				if (entry.attention === "retrying") entry.attention = undefined;
 			}
 			forwardToWindow(win, IPC_EVENTS.TAB_STATUS, tabStatusPayload(entry));
+		});
+		// Terminal output must reach the renderer for background tabs too: a
+		// panel shown later continues from the frames, not a gap.
+		sidecar.on("terminalFrame", (frame: RpcTerminalFrame) => {
+			forwardToWindow(win, IPC_EVENTS.TERMINAL_FRAME, { tabId: entry.tabId, frame });
 		});
 		sidecar.on("sessionInfoUpdate", (frame: SessionInfoUpdateFrame) => {
 			if (frame.title !== undefined) entry.title = frame.title;
@@ -462,6 +484,7 @@ export class SidecarPool {
 		}
 		entry.sidecar.removeAllListeners();
 		entry.sidecar.dispose();
+		this.sidecarLifecycle?.released(entry.tabId);
 		const visible = this.#visibleByWindow.get(entry.winId);
 		visible?.delete(entry.tabId);
 		const split = this.#splitByWindow.get(entry.winId);
@@ -804,6 +827,7 @@ export class SidecarPool {
 		for (const entry of this.#entries) {
 			entry.sidecar.removeAllListeners();
 			entry.sidecar.dispose();
+			this.sidecarLifecycle?.released(entry.tabId);
 		}
 		this.#entries.clear();
 		this.#byTabId.clear();

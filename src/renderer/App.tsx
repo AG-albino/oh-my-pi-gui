@@ -46,6 +46,7 @@ import { useRpcEvents } from "./hooks/use-rpc-events";
 import { newSessionNow, requestSessionSwitch } from "./hooks/use-session-switch";
 import { useSidebarRecency } from "./hooks/use-sidebar-recency";
 import { useTraySync } from "./hooks/use-tray-sync";
+import { useWorkspaceSurfaces } from "./hooks/use-workspace-surfaces";
 import { restartSidecarFromGui, retryFailedTurn, runSessionCommand } from "./lib/command-registry";
 import {
 	hydrateDisplayPreferences,
@@ -169,6 +170,8 @@ export function App() {
 	useExtensionUi();
 	// Session tabs: GET_TABS boot reconciliation + TAB_STATUS subscription.
 	useSessionTabs();
+	// Terminal output and browser state for every tab, plus drawer reveals.
+	useWorkspaceSurfaces();
 	const sidebarVisible = useUiStore(s => s.sidebarVisible);
 	const panelVisible = useUiStore(s => s.panelVisible);
 	const theme = useUiStore(s => s.theme);
@@ -536,6 +539,21 @@ export function App() {
 		window.addEventListener("keydown", onKey);
 		return () => window.removeEventListener("keydown", onKey);
 	}, [t, keymap]);
+
+	// A focused browser page keeps every keystroke: tell the host which chords
+	// are the app's, and replay the ones it hands back through the same dispatch.
+	useEffect(() => {
+		const browser = window.omp?.browser;
+		if (typeof browser?.setShortcuts === "function") browser.setShortcuts([...keymap.keys()]);
+	}, [keymap]);
+	useEffect(() => {
+		const events = window.omp?.events;
+		if (typeof events?.onBrowserKey !== "function") return;
+		return events.onBrowserKey(payload => {
+			if (payload.kind !== "shortcut") return;
+			window.dispatchEvent(new KeyboardEvent("keydown", { ...payload.key, bubbles: true, cancelable: true }));
+		});
+	}, []);
 
 	// Updater status: main-process push + boot replay, unsubscribed on unmount.
 	useEffect(() => subscribeUpdaterStatus(), []);

@@ -656,10 +656,21 @@ kbd,
 .omp-inspector {
 	container: omp-inspector / inline-size;
 	box-shadow: none;
+	/* As an overlay it covers the title bar: opaque, and its controls clickable
+	   instead of dragging the window. */
+	background: var(--omp-bg-primary);
+	-webkit-app-region: no-drag;
 }
 
 .omp-inspector-tab-label {
 	display: inline;
+}
+
+/* Four views share the header: a narrow drawer keeps their icons only. */
+@container omp-inspector (max-width: 480px) {
+	.omp-inspector-tab-label {
+		display: none;
+	}
 }
 
 @media (max-width: 1000px) {

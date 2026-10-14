@@ -1462,8 +1462,18 @@
 	animation: omp-fade-up var(--omp-motion-med) var(--omp-ease-enter) both;
 }
 
-/* Session tab strip: scrolls sideways without a scrollbar track eating the
-   44px bar; the wheel handler and active-tab scrollIntoView do the moving. */
+/* Terminal drawer: the xterm (moved in and out of the panel) fills it. */
+.omp-terminal-viewport .omp-terminal-host,
+.omp-terminal-viewport .xterm {
+	height: 100%;
+}
+.omp-terminal-viewport .xterm-viewport {
+	scrollbar-width: thin;
+}
+
+/* Chip strips (session tabs, terminals, browser pages): scroll sideways
+   without a scrollbar track eating the bar; the wheel handler (and, for
+   session tabs, active-tab scrollIntoView) do the moving. */
 .omp-tab-scroller {
 	scrollbar-width: none;
 }

@@ -11,6 +11,7 @@ import Store from "electron-store";
 import { nativeAccelerator } from "../shared/hotkeys";
 import type { SessionKind } from "../shared/ipc-types";
 import { installQuitGuard, requestQuit } from "./app-quit";
+import { BrowserHost } from "./browser-host";
 import { bundledOmpFilename, resolveOmpCandidate } from "./bundled-omp-path";
 import { setupDeepLinks } from "./deep-link";
 import { ensureDefaultWorkspace } from "./default-workspace";
@@ -212,6 +213,7 @@ async function resolveProxyEnvForSpawn(): Promise<Record<string, string>> {
 // Module-level instances (alive for app lifetime)
 let windowManager: WindowManager;
 let sidecarPool: SidecarPool;
+let browserHost: BrowserHost | null = null;
 let statsServer: StatsServerManager | null = null;
 let sessionIndex: SessionIndex;
 let statsClient: StatsClient;
@@ -376,6 +378,17 @@ app.whenReady().then(() => {
 		return sc;
 	});
 	sidecarPool.onWindowTabsChanged = () => persistTabLayouts();
+	// Agent tabs browse in their own side panel: each sidecar that comes up
+	// serves a relay for it, and its pages outlive sidecar restarts.
+	const host = new BrowserHost();
+	browserHost = host;
+	sidecarPool.sidecarLifecycle = {
+		ready: tab => {
+			if (tab.kind === "agent") void host.link(tab);
+		},
+		down: tabId => host.unlink(tabId),
+		released: tabId => host.release(tabId),
+	};
 	// A closed window's tabs have to leave the saved session with it, or the next
 	// launch resurrects a window the user deliberately shut.
 	windowManager.subscribeWindowClosed(() => persistTabLayouts());
@@ -398,6 +411,7 @@ app.whenReady().then(() => {
 	// Register all handlers and sidecar listeners before loading the renderer.
 	registerIpcHandlers({
 		sidecarPool,
+		browserHost: host,
 		sessionIndex,
 		statsClient,
 		statsRestart: () => statsServer?.ensureRunning() ?? "exhausted",
@@ -444,7 +458,7 @@ app.whenReady().then(() => {
 
 	// Tray, menu, deep links, updater
 	createTray(windowManager, spawnWindow);
-	createMenu(windowManager, spawnWindow);
+	createMenu(windowManager, spawnWindow, host);
 	setupDeepLinks(windowManager, spawnWindow);
 	setupUpdater();
 
@@ -473,6 +487,7 @@ installQuitGuard(
 	() => {
 		statsServer?.kill();
 		sidecarPool?.disposeAll();
+		browserHost?.disposeAll();
 		sessionIndex?.stop();
 		logWatcher?.stop();
 		destroyTray();

@@ -11,6 +11,10 @@ import type {
 	IpcActiveTabEnvelope,
 	IpcBenchmarkRunOptions,
 	IpcBenchmarkRunResult,
+	IpcBrowserActionPayload,
+	IpcBrowserKeyPayload,
+	IpcBrowserState,
+	IpcBrowserViewportPayload,
 	IpcFsListResult,
 	IpcFsReadImageResult,
 	IpcFsReadPlanPayload,
@@ -26,6 +30,7 @@ import type {
 	IpcSpawnTabResult,
 	IpcTabInfo,
 	IpcTabStatusPayload,
+	IpcTerminalFramePayload,
 	LogBatch,
 	MenuAction,
 	MenuActionPayload,
@@ -194,6 +199,26 @@ const api: OmpApi = {
 			subscribe<DeepLinkPayload>(IPC_EVENTS.DEEP_LINK, callback),
 		onUpdaterStatus: (callback: (status: UpdateStatus) => void) =>
 			subscribe<UpdateStatus>(IPC_EVENTS.UPDATER_STATUS, callback),
+		onTerminalFrame: (callback: (payload: IpcTerminalFramePayload) => void) =>
+			subscribe<IpcTerminalFramePayload>(IPC_EVENTS.TERMINAL_FRAME, callback),
+		onBrowserState: (callback: (state: IpcBrowserState) => void) =>
+			subscribe<IpcBrowserState>(IPC_EVENTS.BROWSER_STATE, callback),
+		onBrowserKey: (callback: (payload: IpcBrowserKeyPayload) => void) =>
+			subscribe<IpcBrowserKeyPayload>(IPC_EVENTS.BROWSER_KEY, callback),
+	},
+
+	browser: {
+		getState: (tabId: string) => ipcRenderer.invoke(IPC_COMMANDS.BROWSER_GET_STATE, { tabId }),
+		open: (tabId: string, url: string) => ipcRenderer.invoke(IPC_COMMANDS.BROWSER_OPEN, { tabId, url }),
+		action: (payload: IpcBrowserActionPayload) => ipcRenderer.invoke(IPC_COMMANDS.BROWSER_ACTION, payload),
+		// Fire-and-forget: the panel reports its rect on every layout change.
+		setViewport: (payload: IpcBrowserViewportPayload) => {
+			ipcRenderer.send(IPC_COMMANDS.BROWSER_SET_VIEWPORT, payload);
+		},
+		capture: (tabId: string) => ipcRenderer.invoke(IPC_COMMANDS.BROWSER_CAPTURE, { tabId }),
+		setShortcuts: (chords: string[]) => {
+			ipcRenderer.send(IPC_COMMANDS.BROWSER_SET_SHORTCUTS, { chords });
+		},
 	},
 
 	updater: {
