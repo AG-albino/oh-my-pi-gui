@@ -114,6 +114,28 @@ Still readable`);
 		expect(unfinished.documentElement.textContent).toContain("Still readable");
 	});
 
+	it("keeps currency amounts literal instead of letting $…$ math swallow them", () => {
+		const document = render("美国年付 **$15 (1Gbps/2T流量)**、$25 (2Gbps/4T)，CMIN2 三网直连款 $35-52/年");
+		expect(document.querySelector(".katex")).toBeNull();
+		expect(document.querySelector("strong")?.textContent).toBe("$15 (1Gbps/2T流量)");
+		expect(document.documentElement.textContent).toContain("$25 (2Gbps/4T)");
+		expect(document.documentElement.textContent).toContain("$35-52/年");
+	});
+
+	it("still renders real inline math while sparing adjacent prices", () => {
+		const document = render("costs $5 and $10 and $x^2$ mixed");
+		expect(document.querySelectorAll(".katex")).toHaveLength(1);
+		expect(document.querySelector("annotation")?.textContent).toBe("x^2");
+		expect(document.documentElement.textContent).toContain("costs $5 and $10 and");
+		// $$…$$ is untouched: digit content still typesets.
+		const doubled = render("$$15$$ and $$x$$");
+		expect(doubled.querySelectorAll(".katex")).toHaveLength(2);
+		// A closing $ followed by a digit is a price, not a close (pandoc rule).
+		const trailingDigit = render("a $x$5 b");
+		expect(trailingDigit.querySelector(".katex")).toBeNull();
+		expect(trailingDigit.documentElement.textContent).toContain("$x$5");
+	});
+
 	it("keeps untrusted TeX links and HTML inert while rendering adjacent valid math", () => {
 		const document = render(String.raw`\(\href{javascript:alert(1)}{click}\)
 

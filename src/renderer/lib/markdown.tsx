@@ -24,6 +24,7 @@ import { useUiStore } from "../stores/ui";
 import { saveGuiPreference } from "./display-preferences";
 import { useT } from "./i18n";
 import { PREVIEW_HEIGHT_LG, PREVIEW_SCROLL_CODE } from "./preview";
+import { remarkDollarGuard } from "./remark-dollar-guard";
 import { remarkLatexMath } from "./remark-latex-math";
 
 interface MarkdownRendererProps {
@@ -51,11 +52,16 @@ interface MarkdownRendererProps {
 // Hoisted to module scope: stable plugin arrays and component maps keep
 // ReactMarkdown from treating the pipeline as changed on every render.
 // remark-math must precede rehype-katex: it parses $...$/$$...$$ into math
-// nodes that rehype-katex (rehype chain below) then renders.
-const REMARK_PLUGINS: Options["remarkPlugins"] = [remarkGfm, remarkMath, remarkLatexMath];
+// nodes that rehype-katex (rehype chain below) then renders. The dollar guard
+// registers AFTER remark-math because micromark prepends each extension's
+// constructs — later registration means it is tried BEFORE mathText, letting
+// it keep prices like `$15 … $25` literal instead of letting them eat the
+// markup between them.
+const REMARK_PLUGINS: Options["remarkPlugins"] = [remarkGfm, remarkMath, remarkDollarGuard, remarkLatexMath];
 const REMARK_PLUGINS_LITERAL_SINGLE_DOLLAR: Options["remarkPlugins"] = [
 	remarkGfm,
 	[remarkMath, { singleDollarTextMath: false }],
+	[remarkDollarGuard, { singleDollarTextMath: false }],
 	remarkLatexMath,
 ];
 
