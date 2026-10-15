@@ -137,6 +137,23 @@ export function claimRowEntrances(state: RowEntranceState, pass: RowEntrancePass
 	return claims;
 }
 
+/**
+ * The row showing the message with this session entry id: its own message row,
+ * or the folded process group holding it (which has to open to show it).
+ */
+export function locateEntryRow(
+	rows: readonly Row[],
+	entryId: string,
+): { index: number; kind: "message" | "process" } | null {
+	for (const [index, row] of rows.entries()) {
+		if (row.kind === "message" && row.message.entryId === entryId) return { index, kind: "message" };
+		if (row.kind === "process" && row.messages.some(message => message.entryId === entryId)) {
+			return { index, kind: "process" };
+		}
+	}
+	return null;
+}
+
 export type HistoryRow =
 	| { kind: "message"; message: AgentMessage; reaction?: string; repeats?: number }
 	| { kind: "readGroup"; entries: ReadGroupEntry[]; usage?: ReadGroupUsage[] }

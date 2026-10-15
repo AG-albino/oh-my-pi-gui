@@ -27,6 +27,7 @@ import type {
 	RpcDebugParams,
 	RpcLiveFrame,
 	RpcMcpServerInput,
+	RpcMemoryEdit,
 	RpcResponse,
 	RpcSecurityDispositionStatus,
 	RpcSecurityTargetInput,
@@ -79,6 +80,8 @@ export const IPC_EVENTS = {
 	MODEL_CATALOG_UPDATE: "model-catalog:update",
 	/** Session list changed */
 	SESSIONS_CHANGED: "sessions:changed",
+	/** Learned skills or a project's memory changed on disk (any omp process). */
+	MEMORY_CHANGED: "memory:changed",
 	/** Log line appended */
 	LOG_LINE: "log:line",
 	/** Stats data ready */
@@ -134,6 +137,8 @@ export const IPC_COMMANDS = {
 	SESSIONS_RENAME: "sessions:rename",
 	/** Full-content search over session files; returns matching paths */
 	SESSIONS_SEARCH: "sessions:search",
+	/** Message-level search over what was said in sessions (user and assistant text only). */
+	CONVERSATIONS_SEARCH: "conversations:search",
 	/** Fetch stats endpoint */
 	STATS_FETCH: "stats:fetch",
 	/** Run/cancel an isolated bundled `omp bench --json` process. */
@@ -302,6 +307,7 @@ export type MenuAction =
 	| "restart-sidecar"
 	| "open-workspace-dirs"
 	| "open-agent-hub"
+	| "open-memory"
 	| "open-modes"
 	| "open-providers"
 	| "open-model-roles"
@@ -744,6 +750,47 @@ export type TabStatus = SidecarStatus | "running";
 /** Session kind: "agent" (tools enabled) or "chat" (tool-free conversation). */
 export type SessionKind = "agent" | "chat";
 
+/** One message that matched a conversation search. */
+export interface ConversationHit {
+	/** The session entry id, used to open the transcript at this message. */
+	entryId: string;
+	role: "user" | "assistant";
+	/** One line around the match; matches are wrapped in \u0001…\u0002. */
+	snippet: string;
+	/** ms since epoch; 0 when unknown. */
+	timestamp: number;
+}
+
+/** A session with matching messages, newest activity first. */
+export interface ConversationSearchResult {
+	path: string;
+	sessionId: string;
+	cwd: string;
+	title: string | null;
+	kind?: "chat";
+	/** File modification time, ms since epoch. */
+	modified: number;
+	hits: ConversationHit[];
+	/** Further matching messages not shown. */
+	more: number;
+}
+
+export interface ConversationSearchResponse {
+	results: ConversationSearchResult[];
+	/** Sessions in the index. */
+	indexed: number;
+	/** Present while sessions are still being read into the index. */
+	indexing: { done: number; total: number } | null;
+	/** The index could not be opened; search is off for this run. */
+	unavailable?: boolean;
+}
+
+export interface IpcConversationSearchPayload {
+	query: string;
+	/** Limit to one project; omitted or null searches every project. */
+	cwd?: string | null;
+}
+
 /**
  * A tab's git-worktree binding (tab × worktree, plan/20). Immutable, set at
  * spawn like `kind`; main-held so it survives renderer reloads. `name` is the
@@ -946,6 +993,13 @@ export interface IpcSidecarRestartPayload {
 	sessionPath?: string;
 }
 
+/** What changed under ~/.omp/agent: learned skills, and which project memory folders. */
+export interface IpcMemoryChange {
+	skills: boolean;
+	/** Memory folder names (encoded project paths) that changed. */
+	memoryRoots: string[];
+}
+
 export interface SessionInfo {
 	path: string;
 	id: string;
@@ -1134,6 +1188,10 @@ export interface OmpApi {
 		getMarketplaces(): Promise<RpcResponse>;
 		getPromptTemplates(): Promise<RpcResponse>;
 		getMemoryReport(): Promise<RpcResponse>;
+		getMemoryOverview(cwd?: string): Promise<RpcResponse>;
+		getMemoryActivity(cwd?: string): Promise<RpcResponse>;
+		editMemory(edit: RpcMemoryEdit, cwd?: string): Promise<RpcResponse>;
+		updateMemory(cwd?: string, minIdleMinutes?: number): Promise<RpcResponse>;
 		getSecurityDashboard(): Promise<RpcResponse>;
 		getSecurityScan(scanId: string): Promise<RpcResponse>;
 		securityStart(target: RpcSecurityTargetInput): Promise<RpcResponse>;
@@ -1239,6 +1297,7 @@ export interface OmpApi {
 		onTabSessionInfoUpdate(callback: (frame: SessionInfoUpdateFrame, tabId: string) => void): () => void;
 		onTabExtensionError(callback: (frame: ExtensionErrorFrame, tabId: string) => void): () => void;
 		onSessionsChanged(callback: () => void): () => void;
+		onMemoryChanged(callback: (change: IpcMemoryChange) => void): () => void;
 		onLogBatch(callback: (batch: LogBatch) => void): () => void;
 		onLogLines(callback: (lines: string[]) => void): () => void;
 		onMenuAction(callback: (action: MenuAction, payload?: MenuActionPayload) => void): () => void;
@@ -1275,6 +1334,8 @@ export interface OmpApi {
 		delete(sessionPath: string): Promise<void>;
 		rename(sessionPath: string, name: string): Promise<void>;
 		search(query: string, scope: "local" | "global"): Promise<string[]>;
+		/** Message-level search over user and assistant text; `cwd` limits it to one project. */
+		searchConversations(query: string, cwd?: string | null): Promise<ConversationSearchResponse>;
 		/**
 		 * Open a session (or a fresh project window) in a new parallel window.
 		 * False at the cap. When `sessionPath` is already attached to a tab,

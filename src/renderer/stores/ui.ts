@@ -8,6 +8,9 @@ import { useTabsStore } from "./tabs";
 export type { ThemeMode };
 
 export type PanelTab = "diff" | "files" | "terminal" | "browser";
+
+/** Memory window tabs. */
+export type MemoryTabId = "knowledge" | "skills" | "sources";
 /** Drawer tabs that exist in a tool-free chat tab: no diffs, shells, or agent browsing without tools. */
 export const CHAT_PANEL_TABS: ReadonlySet<PanelTab> = new Set(["files"]);
 /** What the Changes view compares: the checkout, this session's edits, their timeline, or virtual artifacts. */
@@ -57,6 +60,8 @@ interface UiStore {
 	modesTab: "vibe" | "goal" | "loop";
 	agentHubOpen: boolean;
 	agentHubTab: "definitions" | "hub";
+	memoryOpen: boolean;
+	memoryTab: MemoryTabId;
 	hotkeysOpen: boolean;
 	importDialogOpen: boolean;
 	copySelectorOpen: boolean;
@@ -88,6 +93,8 @@ interface UiStore {
 	armedCloseTab: { tabId: string } | null;
 	/** PR Center fullscreen panel (plan/21). */
 	prCenterOpen: boolean;
+	/** Search over what was said in sessions (⇧⌘F). */
+	conversationSearchOpen: boolean;
 	sessionPickerOpen: boolean;
 	branchPickerOpen: boolean;
 	sessionTreeOpen: boolean;
@@ -170,6 +177,9 @@ interface UiStore {
 	openModes: (tab?: "vibe" | "goal" | "loop") => void;
 	closeModes: () => void;
 	openAgentHub: (tab?: "definitions" | "hub") => void;
+	/** The Memory window; reopening without a tab keeps the last one. */
+	openMemory: (tab?: MemoryTabId) => void;
+	closeMemory: () => void;
 	closeAgentHub: () => void;
 	openHotkeys: () => void;
 	closeHotkeys: () => void;
@@ -213,6 +223,8 @@ interface UiStore {
 	cancelCloseTab: () => void;
 	openPrCenter: () => void;
 	closePrCenter: () => void;
+	openConversationSearch: () => void;
+	closeConversationSearch: () => void;
 	openSessionPicker: () => void;
 	closeSessionPicker: () => void;
 	openBranchPicker: () => void;
@@ -361,6 +373,10 @@ export const useUiStore = create<UiStore>()((set, get) => ({
 	agentHubTab: "definitions" as const,
 	openAgentHub: tab => set({ agentHubOpen: true, agentHubTab: tab ?? "definitions" }),
 	closeAgentHub: () => set({ agentHubOpen: false }),
+	memoryOpen: false,
+	memoryTab: "knowledge" as MemoryTabId,
+	openMemory: tab => set(state => ({ memoryOpen: true, memoryTab: tab ?? state.memoryTab })),
+	closeMemory: () => set({ memoryOpen: false }),
 	hotkeysOpen: false,
 	openHotkeys: () => set({ hotkeysOpen: true }),
 	closeHotkeys: () => set({ hotkeysOpen: false }),
@@ -427,6 +443,9 @@ export const useUiStore = create<UiStore>()((set, get) => ({
 	prCenterOpen: false,
 	openPrCenter: () => set({ prCenterOpen: true }),
 	closePrCenter: () => set({ prCenterOpen: false }),
+	conversationSearchOpen: false,
+	openConversationSearch: () => set({ conversationSearchOpen: true }),
+	closeConversationSearch: () => set({ conversationSearchOpen: false }),
 	sessionPickerOpen: false,
 	openSessionPicker: () => set({ sessionPickerOpen: true }),
 	closeSessionPicker: () => set({ sessionPickerOpen: false }),
@@ -454,6 +473,7 @@ export const useUiStore = create<UiStore>()((set, get) => ({
 			inventoryOpen: false,
 			modesOpen: false,
 			agentHubOpen: false,
+			memoryOpen: false,
 			importDialogOpen: false,
 			copySelectorOpen: false,
 			contextReportOpen: false,
@@ -474,6 +494,7 @@ export const useUiStore = create<UiStore>()((set, get) => ({
 			worktreeClosePrompt: null,
 			armedCloseTab: null,
 			prCenterOpen: false,
+			conversationSearchOpen: false,
 			filePreviewPath: null,
 			sessionPickerOpen: false,
 			branchPickerOpen: false,

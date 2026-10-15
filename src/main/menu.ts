@@ -250,6 +250,10 @@ export function createMenu(windowManager: WindowManager, spawnWindow: SpawnWindo
 					click: () => sendMenuAction(windowManager, spawnWindow, "open-agent-hub"),
 				},
 				{
+					label: mainT("menu.memory", language),
+					click: () => sendMenuAction(windowManager, spawnWindow, "open-memory"),
+				},
+				{
 					label: mainT("menu.modes", language),
 					click: () => sendMenuAction(windowManager, spawnWindow, "open-modes"),
 				},

@@ -44,6 +44,7 @@ type MainTextKey =
 	| "menu.hotkeys"
 	| "menu.jobs"
 	| "menu.agentHub"
+	| "menu.memory"
 	| "menu.extensions"
 	| "menu.inventory"
 	| "menu.modes"
@@ -120,6 +121,7 @@ const TEXT: Record<MainTextKey, Record<MainLanguage, string>> = {
 	"menu.hotkeys": { en: "Keyboard Shortcuts", zh: "键盘快捷键" },
 	"menu.jobs": { en: "Jobs", zh: "任务" },
 	"menu.agentHub": { en: "Agent Hub", zh: "代理中心" },
+	"menu.memory": { en: "Memory", zh: "记忆" },
 	"menu.extensions": { en: "Extensions", zh: "扩展" },
 	"menu.inventory": { en: "Plugins & Resources", zh: "插件与资源" },
 	"menu.modes": { en: "Modes", zh: "模式" },

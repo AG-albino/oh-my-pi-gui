@@ -199,6 +199,43 @@ describe("Modal", () => {
 		expect(onClose).toHaveBeenCalledTimes(1);
 	});
 
+	it("leaves Escape to an inline editor that owns it, then closes on the next one", async () => {
+		// A browser runs the dialog's document capture listener before the editor
+		// sees the key; linkedom runs capture after bubbling, so call it directly.
+		const captured: EventListener[] = [];
+		const add = document.addEventListener.bind(document);
+		vi.spyOn(document, "addEventListener").mockImplementation(((
+			type: string,
+			listener: EventListener,
+			options?: boolean | AddEventListenerOptions,
+		) => {
+			if (type === "keydown" && options === true) captured.push(listener);
+			add(type, listener, options);
+		}) as typeof document.addEventListener);
+		const onClose = vi.fn();
+		await mount(
+			<Modal open onClose={onClose} title="Dialog">
+				<input data-owns-escape="" />
+			</Modal>,
+		);
+		const escapeFrom = (target: unknown) =>
+			({
+				key: "Escape",
+				keyCode: 27,
+				isComposing: false,
+				target,
+				preventDefault() {},
+				stopPropagation() {},
+				stopImmediatePropagation() {},
+			}) as unknown as Event;
+		const onKeyDown = captured.at(-1);
+		onKeyDown?.(escapeFrom(document.querySelector("input")));
+		expect(onClose).not.toHaveBeenCalled();
+
+		onKeyDown?.(escapeFrom(document.querySelector("[role='dialog']")));
+		expect(onClose).toHaveBeenCalledTimes(1);
+	});
+
 	it("ignores Escape while a custom fullscreen dialog covers it", async () => {
 		const onClose = vi.fn();
 		await mount(

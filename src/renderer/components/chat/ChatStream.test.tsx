@@ -13,6 +13,7 @@ import {
 	hasStreamingTranscriptContent,
 	isTranscriptAtLiveEdge,
 	LIVE_EDGE_SLACK_PX,
+	locateEntryRow,
 	mergeTodoSnapshots,
 	ROW_ENTRANCE_TAIL_ROWS,
 	shouldRePinTranscript,
@@ -593,5 +594,32 @@ describe("summarizeTurnChanges", () => {
 		);
 		expect(summary).toEqual({ files: 2, adds: 6, removes: 5 });
 		expect(summarizeTurnChanges([edit("src/a.ts", 900, 1, 1)], 1_000)).toBeNull();
+	});
+});
+
+describe("locating a message to open at", () => {
+	const narrated = assistant([
+		{ type: "text", text: "Checking the signer." },
+		{ type: "toolCall", id: "call-sign", name: "bash", arguments: { command: "codesign -v" } },
+	]);
+	const transcript: AgentMessage[] = [
+		{ role: "user", content: "why does notarize fail", timestamp: at, entryId: "u1" },
+		{ ...narrated, entryId: "a1" },
+		toolResult("call-sign"),
+		{ ...assistant([{ type: "text", text: "It needs the hardened runtime." }]), entryId: "a2" },
+	];
+
+	it("finds a message's own row, or the folded group that has to open to show it", () => {
+		const compact = buildHistoryRows(transcript, "compact");
+		expect(locateEntryRow(compact, "u1")).toEqual({ index: 0, kind: "message" });
+		expect(locateEntryRow(compact, "a1")).toEqual({ index: 1, kind: "process" });
+		expect(locateEntryRow(compact, "a2")).toEqual({ index: 2, kind: "message" });
+
+		const full = buildHistoryRows(transcript, "full");
+		expect(locateEntryRow(full, "a1")?.kind).toBe("message");
+	});
+
+	it("reports a message the open branch does not contain", () => {
+		expect(locateEntryRow(buildHistoryRows(transcript, "compact"), "elsewhere")).toBeNull();
 	});
 });

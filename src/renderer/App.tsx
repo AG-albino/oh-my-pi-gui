@@ -42,6 +42,7 @@ import { TitleBar } from "./components/layout/TitleBar";
 import { UpdateBanner } from "./components/layout/UpdateBanner";
 import { useAwaitingConfirmation } from "./hooks/use-awaiting-confirmation";
 import { useExtensionUi } from "./hooks/use-extension-ui";
+import { useLearnedSkillsSync } from "./hooks/use-learned-skills";
 import { useRpcEvents } from "./hooks/use-rpc-events";
 import { newSessionNow, requestSessionSwitch } from "./hooks/use-session-switch";
 import { useSidebarRecency } from "./hooks/use-sidebar-recency";
@@ -110,6 +111,10 @@ const ModesPanel = lazy(() => import("./components/panels/ModesPanel").then(m =>
 const AgentHubWindow = lazy(() =>
 	import("./components/panels/AgentHubWindow").then(m => ({ default: m.AgentHubWindow })),
 );
+const ConversationSearchDialog = lazy(() =>
+	import("./components/dialogs/ConversationSearchDialog").then(m => ({ default: m.ConversationSearchDialog })),
+);
+const MemoryWindow = lazy(() => import("./components/memory/MemoryWindow").then(m => ({ default: m.MemoryWindow })));
 const PrCenterWindow = lazy(() =>
 	import("./components/panels/PrCenterWindow").then(m => ({ default: m.PrCenterWindow })),
 );
@@ -126,6 +131,7 @@ const ProvidersWindow = lazy(() =>
 
 function FocusedSessionEffects() {
 	useTraySync();
+	useLearnedSkillsSync();
 	useSidebarRecency();
 	const titleRunState = useDisplayPreference("titleState");
 	const titleStreaming = useSessionStore(s => s.isStreaming);
@@ -452,6 +458,14 @@ export function App() {
 					// ⌥A — agent hub (TUI app.agents.hub).
 					ui.openAgentHub("hub");
 					return;
+				case "memory.open":
+					// ⌥⇧M — what omp remembers about this project.
+					ui.openMemory();
+					return;
+				case "search.conversations":
+					// ⇧⌘F — find something said in any session.
+					ui.openConversationSearch();
+					return;
 				case "palette":
 					if (ui.commandPaletteOpen) ui.closeCommandPalette();
 					else ui.openCommandPalette();
@@ -666,6 +680,10 @@ export function App() {
 				ui.openAgentHub();
 				return;
 			}
+			if (action === "open-memory") {
+				ui.openMemory();
+				return;
+			}
 			if (action === "open-modes") {
 				ui.openModes();
 				return;
@@ -798,6 +816,8 @@ export function App() {
 				<ModesPanel open={modesOpen} onClose={closeModes} initialTab={modesTab} />
 				<AgentHubWindow open={agentHubOpen} onClose={closeAgentHub} initialTab={agentHubTab} />
 				<PrCenterWindow />
+				<MemoryWindow />
+				<ConversationSearchDialog />
 				<ProviderConfigDialog
 					open={providerConfigOpen}
 					editProvider={providerConfigEdit}

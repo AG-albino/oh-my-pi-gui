@@ -1,6 +1,7 @@
 import {
 	BarChart3,
 	Bot,
+	Brain,
 	BriefcaseBusiness,
 	ChevronRight,
 	Code2,
@@ -28,6 +29,7 @@ import {
 	Sparkles,
 	SquarePen,
 	SquareTerminal,
+	TextSearch,
 	Trash2,
 } from "lucide-react";
 import {
@@ -53,6 +55,7 @@ import { useTabRpc } from "../../lib/tab-rpc";
 import { tabSignalPresentation } from "../../lib/tab-signal";
 import { useSessionStore } from "../../stores/session";
 import { useSidebarPrefs } from "../../stores/sidebar-prefs";
+import { usePendingSkillReviews } from "../../stores/skill-review";
 import { useTabsStore } from "../../stores/tabs";
 import { toast } from "../../stores/toast";
 import { useUiStore } from "../../stores/ui";
@@ -203,6 +206,7 @@ export function Sidebar() {
 	const awaitingConfirmation = useAwaitingConfirmation();
 	const openThemePicker = useUiStore(s => s.openThemePicker);
 	const openSessionPicker = useUiStore(s => s.openSessionPicker);
+	const pendingSkillReviews = usePendingSkillReviews();
 
 	useEffect(() => {
 		void window.omp.sidecar
@@ -614,6 +618,8 @@ export function Sidebar() {
 		label: string;
 		title?: string;
 		shortcut?: string;
+		/** Count of things waiting for the person (e.g. learned skills to review). */
+		badge?: number;
 		onClick: () => void;
 	}
 	// Session work stays one click away; app-wide tools live in the More menu
@@ -628,11 +634,34 @@ export function Sidebar() {
 			onClick: () => useUiStore.getState().openCommandPalette(),
 		},
 		{
+			id: "search",
+			icon: TextSearch,
+			label: t("titlebar.search"),
+			title: t("titlebar.searchHint"),
+			shortcut: actionChords.get("search.conversations")?.[0],
+			onClick: () => useUiStore.getState().openConversationSearch(),
+		},
+		{
 			id: "agents",
 			icon: Bot,
 			label: t("titlebar.agentHub"),
 			shortcut: actionChords.get("agents.hub")?.[0],
 			onClick: () => useUiStore.getState().openAgentHub(),
+		},
+		{
+			id: "memory",
+			icon: Brain,
+			label: t("titlebar.memory"),
+			title:
+				pendingSkillReviews > 0
+					? t("titlebar.memoryReview", {
+							count: pendingSkillReviews,
+							plural: pendingSkillReviews === 1 ? "" : "s",
+						})
+					: undefined,
+			shortcut: actionChords.get("memory.open")?.[0],
+			badge: pendingSkillReviews,
+			onClick: () => useUiStore.getState().openMemory(pendingSkillReviews > 0 ? "skills" : undefined),
 		},
 		{
 			id: "pull-requests",
@@ -693,7 +722,12 @@ export function Sidebar() {
 			>
 				<Icon aria-hidden="true" className="shrink-0 text-[var(--omp-muted)]" size={16} strokeWidth={1.75} />
 				<span className="min-w-0 flex-1 truncate">{item.label}</span>
-				{item.shortcut && (
+				{item.badge ? (
+					<span className="shrink-0 rounded-full bg-(--omp-accent-dim) px-1.5 text-omp-xxs font-medium tabular-nums text-(--omp-accent)">
+						{item.badge}
+					</span>
+				) : null}
+				{!item.badge && item.shortcut && (
 					<span className="shrink-0 text-omp-xs tracking-wide text-[var(--omp-dim)] opacity-0 transition-opacity group-hover/nav:opacity-100 group-focus-visible/nav:opacity-100">
 						{item.shortcut}
 					</span>

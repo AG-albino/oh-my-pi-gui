@@ -33,6 +33,7 @@ import { useSettingsStore } from "../stores/settings";
 import { activeTabKind, useTabsStore } from "../stores/tabs";
 import { toast } from "../stores/toast";
 import { useTodoStore } from "../stores/todo";
+import type { MemoryTabId } from "../stores/ui";
 import { type DockCardId, useUiStore } from "../stores/ui";
 import { isCommandAvailable } from "./command-availability";
 import { exportSessionHtml } from "./export-session";
@@ -126,6 +127,7 @@ export interface CommandRegistryContext {
 	openThemePicker: () => void;
 	openModes: (tab?: "vibe" | "goal" | "loop") => void;
 	openAgentHub: (tab?: "definitions" | "hub") => void;
+	openMemory: (tab?: MemoryTabId) => void;
 	openPrCenter: () => void;
 	openHotkeys: () => void;
 	openImportDialog: () => void;
@@ -466,6 +468,15 @@ export function buildCommandMenu(ctx: CommandRegistryContext): CommandMenuItem[]
 		description: t("cmd.resume.desc"),
 		category: "session",
 		affordance: { kind: "picker", open: ctx.openSessionPicker },
+	});
+	add({
+		name: "search",
+		label: t("cmd.search"),
+		description: t("cmd.search.desc"),
+		category: "session",
+		shortcut: "⇧⌘F",
+		aliases: ["find", "conversations"],
+		affordance: { kind: "window", open: () => useUiStore.getState().openConversationSearch() },
 	});
 	add({
 		name: "import",
@@ -1071,10 +1082,10 @@ export function buildCommandMenu(ctx: CommandRegistryContext): CommandMenuItem[]
 					label: t("cmd.memory.panel"),
 					description: t("cmd.memory.panel.desc"),
 					category: "extensions",
-					affordance: { kind: "window", open: () => ctx.openSettings("resources:memory") },
+					affordance: { kind: "window", open: () => ctx.openMemory() },
 				},
-				// The Inventory memory tab covers view/stats/diagnose natively.
-				subWindow("memory view", () => ctx.openSettings("resources:memory")),
+				subWindow("memory view", () => ctx.openMemory("knowledge")),
+				// The Inventory memory tab covers backend stats/diagnose natively.
 				subWindow("memory stats", () => ctx.openSettings("resources:memory")),
 				subWindow("memory diagnose", () => ctx.openSettings("resources:memory")),
 				sub("memory clear", "/memory clear"),
@@ -1771,6 +1782,7 @@ export function buildCurrentCommandMenu(availableCommands: AvailableCommand[]): 
 		openThemePicker: ui.openThemePicker,
 		openModes: ui.openModes,
 		openAgentHub: ui.openAgentHub,
+		openMemory: ui.openMemory,
 		openPrCenter: ui.openPrCenter,
 		openHotkeys: ui.openHotkeys,
 		openImportDialog: ui.openImportDialog,

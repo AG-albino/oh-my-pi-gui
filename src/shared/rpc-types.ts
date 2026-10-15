@@ -94,6 +94,10 @@ export type RpcCommand =
 	| { id?: string; type: "get_marketplaces" }
 	| { id?: string; type: "get_prompt_templates" }
 	| { id?: string; type: "get_memory_report" }
+	| { id?: string; type: "get_memory_overview"; cwd?: string }
+	| { id?: string; type: "get_memory_activity"; cwd?: string }
+	| { id?: string; type: "edit_memory"; cwd?: string; edit: RpcMemoryEdit }
+	| { id?: string; type: "update_memory"; cwd?: string; minIdleMinutes?: number }
 	| { id?: string; type: "get_security_dashboard" }
 	| { id?: string; type: "get_security_scan"; scanId: string }
 	| { id?: string; type: "get_ssh_hosts" }
@@ -718,6 +722,8 @@ export interface RpcSkillInfo {
 	level: "user" | "project" | "native";
 	managed: boolean;
 	hidden: boolean;
+	/** Managed skills only: last write to SKILL.md, ms since epoch. */
+	modifiedAt?: number;
 }
 export interface RpcSkillsResult {
 	skills: RpcSkillInfo[];
@@ -964,6 +970,90 @@ export interface RpcMemoryStatus {
 	message?: string;
 	error?: string;
 }
+/** One bullet of the user's notes or the captured lessons; edits name it by `line`. */
+export interface RpcMemoryListEntry {
+	line: string;
+	text: string;
+	context?: string;
+}
+
+/** Where a session stands in its project's memory (mirrors MemorySourceState). */
+export type RpcMemorySourceState =
+	| "remembered"
+	| "nothing"
+	| "forgotten"
+	| "reading"
+	| "failed"
+	| "waiting"
+	| "queued"
+	| "old";
+
+export interface RpcMemorySource {
+	threadId: string;
+	sessionPath?: string;
+	title?: string;
+	/** ms since epoch; 0 when unknown. */
+	updatedAt: number;
+	state: RpcMemorySourceState;
+	summary?: string;
+	readAt?: number;
+	changedSinceRead?: boolean;
+	forgottenAt?: number;
+	error?: string;
+}
+
+export interface RpcMemoryActivity {
+	phase: "reading" | "consolidating";
+	done: number;
+	total: number;
+	/** Another omp process holds the work; counts are unknown. */
+	elsewhere: boolean;
+}
+
+/** One project's local memory (mirrors MemoryOverview). */
+export interface RpcMemoryOverview {
+	cwd: string;
+	/** The project's memory folder (may not exist yet). */
+	root: string;
+	backend: string;
+	enabled: boolean;
+	notes: RpcMemoryListEntry[];
+	lessons: RpcMemoryListEntry[];
+	summary: string;
+	full: string;
+	playbooks: Array<{ name: string; description: string; content: string }>;
+	injection: {
+		tokens: { notes: number; summary: number; learned: number; budget: number };
+		notesIncluded: number;
+		lessonsIncluded: number;
+		summaryTruncated: boolean;
+	};
+	sources: RpcMemorySource[];
+	activity?: RpcMemoryActivity;
+	consolidation: { updatedAt?: number; error?: string; pending: boolean };
+	limits: { idleHours: number; maxAgeDays: number; perUpdate: number };
+	models: { read?: string; consolidate?: string };
+}
+
+export type RpcMemoryEdit =
+	| { kind: "note"; action: "add"; text: string }
+	| { kind: "note" | "lesson"; action: "update"; line: string; text: string; context?: string }
+	| { kind: "note" | "lesson"; action: "delete"; line: string }
+	| { kind: "source"; action: "forget" | "restore"; threadId: string }
+	| { kind: "erase" };
+
+export type RpcMemoryEditOutcome = { ok: true; line?: string } | { ok: false; reason: "empty" | "not_found" | "full" };
+
+export interface RpcMemoryEditResult {
+	result: RpcMemoryEditOutcome;
+	overview: RpcMemoryOverview;
+}
+
+export interface RpcMemoryUpdateResult {
+	started: boolean;
+	overview: RpcMemoryOverview;
+}
+
 /** Read-only memory backend report. */
 export interface RpcMemoryReport {
 	backend: string;

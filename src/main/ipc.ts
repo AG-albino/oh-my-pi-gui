@@ -7,6 +7,7 @@ import path from "node:path";
 import { BrowserWindow, clipboard, dialog, ipcMain, Notification, shell } from "electron";
 import Store from "electron-store";
 import type {
+	ConversationSearchResponse,
 	CustomProviderInput,
 	FsTreeEntry,
 	IpcBenchmarkRunOptions,
@@ -14,6 +15,7 @@ import type {
 	IpcBrowserActionPayload,
 	IpcBrowserViewportPayload,
 	IpcCloseTabPayload,
+	IpcConversationSearchPayload,
 	IpcExtensionUiRespondPayload,
 	IpcFsListPayload,
 	IpcFsReadImagePayload,
@@ -49,10 +51,12 @@ import type { RpcCommand, RpcSessionState } from "../shared/rpc-types";
 import { requestQuit } from "./app-quit";
 import { BenchmarkRunner } from "./benchmark-runner";
 import type { BrowserHost } from "./browser-host";
+import type { ConversationIndex } from "./conversation-index";
 import { ensureDefaultWorkspace } from "./default-workspace";
 import { openInExternalEditor } from "./editor";
 import { mainT } from "./i18n";
 import type { LogWatcher } from "./log-watcher";
+import type { MemoryWatcher } from "./memory-watcher";
 import { createMenu } from "./menu";
 import { deleteModelsProvider, listModelsProviders, modelsPath, upsertModelsProvider } from "./models-config";
 import { runtimeLogPath, writeRuntimeLog } from "./runtime-log";
@@ -77,6 +81,9 @@ export interface IpcDeps {
 	/** Demand-driven revive for the bundled stats server (no server → "exhausted"). */
 	statsRestart: () => Revive;
 	logWatcher: LogWatcher;
+	memoryWatcher: MemoryWatcher;
+	/** Message-level session search; null when its database could not be opened. */
+	conversationIndex: ConversationIndex | null;
 	windowManager: WindowManager;
 	benchmarkBinaryPath: string | null;
 	benchmarkEnv: () => Promise<NodeJS.ProcessEnv>;
@@ -363,7 +370,7 @@ function aggregateProgress(states: RunProgressState[]): RunProgressState {
 
 export function registerIpcHandlers(deps: IpcDeps): void {
 	const benchmarkRunners = new Map<number, BenchmarkRunner>();
-	const { sidecarPool, sessionIndex, statsClient, logWatcher, windowManager } = deps;
+	const { sidecarPool, sessionIndex, statsClient, logWatcher, memoryWatcher, windowManager } = deps;
 	const prefsStore = new Store<PrefsSchema>({ name: "prefs" });
 
 	// Drop a closed window's tray/progress snapshot so the aggregate reflects
@@ -398,6 +405,10 @@ export function registerIpcHandlers(deps: IpcDeps): void {
 	};
 
 	// Log lines (batched by LogWatcher)
+	memoryWatcher.onChange = change => {
+		broadcast(windowManager, IPC_EVENTS.MEMORY_CHANGED, change);
+	};
+
 	logWatcher.onLines = lines => {
 		broadcast(windowManager, IPC_EVENTS.LOG_LINE, { lines, nextSequence: logWatcher.getSnapshot().nextSequence });
 	};
@@ -783,6 +794,17 @@ export function registerIpcHandlers(deps: IpcDeps): void {
 			candidates.map(info => info.path),
 		);
 	});
+
+	ipcMain.handle(
+		IPC_COMMANDS.CONVERSATIONS_SEARCH,
+		async (_event, payload: IpcConversationSearchPayload): Promise<ConversationSearchResponse> => {
+			const index = deps.conversationIndex;
+			if (!index) return { results: [], indexed: 0, indexing: null, unavailable: true };
+			const query = typeof payload?.query === "string" ? payload.query.slice(0, 200) : "";
+			const cwd = typeof payload?.cwd === "string" && payload.cwd ? payload.cwd : null;
+			return index.searchFresh(query, { cwd });
+		},
+	);
 
 	// Stats
 	ipcMain.handle(IPC_COMMANDS.STATS_FETCH, async (_event, payload: IpcStatsFetchPayload) => {

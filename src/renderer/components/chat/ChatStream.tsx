@@ -32,6 +32,7 @@ import { useActiveTabKind, useTabsStore } from "../../stores/tabs";
 import { toast } from "../../stores/toast";
 import { type TodoSnapshot, useTodoStore } from "../../stores/todo";
 import { type ToolEntry, toolEntryKey, useToolsStore } from "../../stores/tools";
+import { TRANSCRIPT_FOCUS_TTL_MS, useTranscriptFocusStore } from "../../stores/transcript-focus";
 import { useUiStore } from "../../stores/ui";
 import { PiLogo } from "../common";
 import { buildEditCandidates } from "../panels/DiffPanel";
@@ -50,6 +51,7 @@ import {
 	type HistoryRow,
 	isTranscriptAtLiveEdge,
 	isVisibleTranscriptMessage,
+	locateEntryRow,
 	type MountedTranscriptRow,
 	mergeTodoSnapshots,
 	messageTimestampMs,
@@ -67,6 +69,8 @@ import { ThinkingBlock } from "./ThinkingBlock";
 // TanStack's end check needs one CSS pixel for fractional scrollTop rounding.
 // User intent is enforced separately by switching away from end anchoring.
 const LIVE_EDGE_THRESHOLD_PX = 1;
+/** How long a message opened from search stays marked. */
+const FOUND_MARK_MS = 1800;
 
 /**
  * Virtual-scroll message list. Stays pinned to the bottom while streaming
@@ -546,6 +550,63 @@ function SessionTranscript() {
 		});
 	}, []);
 
+	// Open at a message (conversation search): once this tab shows the requested
+	// session file with its history loaded, scroll the message into the middle of
+	// the view and mark it. Earlier-than-compaction history opens first; a folded
+	// process group opens to show it. A message on another branch says so.
+	const sessionFile = useSessionStore(s => s.sessionFile);
+	const focusTarget = useTranscriptFocusStore(s => s.target);
+	const settleFocus = useTranscriptFocusStore(s => s.settle);
+	const [foundKey, setFoundKey] = useState<string | null>(null);
+	useEffect(() => {
+		const target = focusTarget;
+		if (!target || target.sessionPath !== sessionFile) return;
+		if (Date.now() - target.requestedAt > TRANSCRIPT_FOCUS_TTL_MS) {
+			settleFocus(target.nonce);
+			return;
+		}
+		if (status !== "ready" || switchPending || messages.length === 0) return;
+		if (hiddenCount > 0 && displayMessages.slice(0, hiddenCount).some(m => m.entryId === target.entryId)) {
+			setPreCompactionOpen(true);
+			return;
+		}
+		settleFocus(target.nonce);
+		const found = locateEntryRow(rows, target.entryId);
+		if (!found) {
+			toast({ variant: "info", message: t("search.notOnBranch") });
+			return;
+		}
+		const key = rowKeys[found.index] ?? null;
+		if (found.kind === "process" && key) updateProcessExpanded(key, true);
+		// Hold the view on the message: no tail following until the reader heads back down.
+		userScrollIntentRef.current = false;
+		gestureAnchorRef.current = null;
+		gestureTowardTailRef.current = false;
+		viewRef.current.pinned = false;
+		setPinned(false);
+		virtualizer.scrollToIndex(found.index, { align: "center" });
+		setFoundKey(key);
+	}, [
+		focusTarget,
+		sessionFile,
+		status,
+		switchPending,
+		messages.length,
+		hiddenCount,
+		displayMessages,
+		rows,
+		rowKeys,
+		settleFocus,
+		t,
+		updateProcessExpanded,
+		virtualizer,
+	]);
+	useEffect(() => {
+		if (foundKey === null) return;
+		const timer = window.setTimeout(() => setFoundKey(null), FOUND_MARK_MS);
+		return () => clearTimeout(timer);
+	}, [foundKey]);
+
 	// Messages hydrate via hydrateSession (use-rpc-events) on sidecar ready —
 	// no separate fetch here (that would double-download the transcript).
 
@@ -628,6 +689,7 @@ function SessionTranscript() {
 									data-index={item.index}
 									data-row-key={rowKey}
 									data-transcript-kind={row.kind}
+									className={rowKey === foundKey ? "omp-row-found" : undefined}
 									ref={virtualizer.measureElement}
 									style={{
 										position: "absolute",
@@ -1226,6 +1288,7 @@ export {
 	hasStreamingTranscriptContent,
 	isTranscriptAtLiveEdge,
 	LIVE_EDGE_SLACK_PX,
+	locateEntryRow,
 	mergeTodoSnapshots,
 	ROW_ENTRANCE_TAIL_ROWS,
 	shouldRePinTranscript,

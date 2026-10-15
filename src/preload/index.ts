@@ -5,6 +5,7 @@
  */
 import { contextBridge, ipcRenderer } from "electron";
 import type {
+	ConversationSearchResponse,
 	CustomProviderInput,
 	CustomProviderView,
 	DeepLinkPayload,
@@ -15,11 +16,13 @@ import type {
 	IpcBrowserKeyPayload,
 	IpcBrowserState,
 	IpcBrowserViewportPayload,
+	IpcConversationSearchPayload,
 	IpcFsListResult,
 	IpcFsReadImageResult,
 	IpcFsReadPlanPayload,
 	IpcFsReadPlanResult,
 	IpcFsReadResult,
+	IpcMemoryChange,
 	IpcOpenPathResult,
 	IpcSessionOpenNewWindowPayload,
 	IpcSessionOwner,
@@ -160,6 +163,8 @@ const api: OmpApi = {
 		onConfigUpdate: (callback: (payload: ConfigUpdateFrame) => void) =>
 			subscribeActiveTab<ConfigUpdateFrame>(IPC_EVENTS.CONFIG_UPDATE, callback),
 		onSessionsChanged: (callback: () => void) => subscribe<undefined>(IPC_EVENTS.SESSIONS_CHANGED, () => callback()),
+		onMemoryChanged: (callback: (change: IpcMemoryChange) => void) =>
+			subscribe<IpcMemoryChange>(IPC_EVENTS.MEMORY_CHANGED, callback),
 		onLogLines: (callback: (lines: string[]) => void) =>
 			subscribe<LogBatch>(IPC_EVENTS.LOG_LINE, batch => callback(batch.lines)),
 		onLogBatch: (callback: (batch: LogBatch) => void) => subscribe<LogBatch>(IPC_EVENTS.LOG_LINE, callback),
@@ -253,6 +258,11 @@ const api: OmpApi = {
 			ipcRenderer.invoke(IPC_COMMANDS.SESSIONS_RENAME, { sessionPath, name }) as Promise<void>,
 		search: (query: string, scope: "local" | "global") =>
 			ipcRenderer.invoke(IPC_COMMANDS.SESSIONS_SEARCH, { query, scope }) as Promise<string[]>,
+		searchConversations: (query: string, cwd?: string | null) =>
+			ipcRenderer.invoke(IPC_COMMANDS.CONVERSATIONS_SEARCH, {
+				query,
+				cwd,
+			} satisfies IpcConversationSearchPayload) as Promise<ConversationSearchResponse>,
 		openInNewWindow: (payload: IpcSessionOpenNewWindowPayload) =>
 			ipcRenderer.invoke(IPC_COMMANDS.SESSION_OPEN_NEW_WINDOW, payload) as Promise<boolean>,
 		consumePendingOpen: () => ipcRenderer.invoke(IPC_COMMANDS.SESSION_CONSUME_PENDING) as Promise<string | null>,

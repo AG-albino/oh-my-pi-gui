@@ -18,6 +18,7 @@ import { useT } from "../../lib/i18n";
 import { MarkdownRenderer } from "../../lib/markdown";
 import { useTabRpc } from "../../lib/tab-rpc";
 import { useSessionStore } from "../../stores/session";
+import { useSkillReviewStore } from "../../stores/skill-review";
 import { useTabsStore } from "../../stores/tabs";
 import { toast } from "../../stores/toast";
 import { Button, Input, Spinner, TextArea } from "../common";
@@ -241,6 +242,9 @@ export function SkillsSettingsPage({ query }: { query: string }) {
 			if (!response.success) throw new Error(response.error);
 			if (mutationRoute !== routeRef.current) return;
 			setEditor(null);
+			// A skill the person wrote is reviewed by definition; it never shows as new in Memory.
+			const written = await tabRpc.getSkillDetail(editor.name.trim().toLocaleLowerCase()).catch(() => null);
+			if (written?.success) await useSkillReviewStore.getState().markReviewed(written.data as RpcSkillDetail);
 			await loadSkills(editor.name.trim().toLocaleLowerCase());
 			toast({ variant: "success", message: t(`settings.skills.${editor.mode}Success`) });
 		} catch (cause) {
@@ -261,6 +265,7 @@ export function SkillsSettingsPage({ query }: { query: string }) {
 			if (mutationRoute !== routeRef.current) return;
 			setDeleteArmed(false);
 			setDetail(null);
+			await useSkillReviewStore.getState().forget(selected.name);
 			await loadSkills(null);
 			toast({ variant: "success", message: t("settings.skills.deleteSuccess") });
 		} catch (cause) {

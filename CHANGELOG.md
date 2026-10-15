@@ -16,6 +16,9 @@
 - **Find in page**: ⌘F (Edit → Find in Page…) searches the page the Browser view shows, with a match count; Enter / ⇧Enter or ⌘G / ⇧⌘G (F3 / ⇧F3) step through matches and Esc closes the bar. A web app with its own ⌘F, like an online editor, keeps it.
 - **Pages rest when out of sight**: pages you are not looking at — in the background, with the side panel closed, or with the window minimized or covered — sleep like a browser's background tabs and stop using CPU. A page the agent is working in stays awake until it has been idle for 30 seconds, even with the window covered or minimized.
 - Pages the agent works in behind the scenes get a desktop-size window (1280×800 at least), so a narrow side panel never hands it a phone layout.
+- **Memory**: a window (sidebar, or ⌥⇧M) shows what omp remembers about a project. Turning it on reads the project's idle sessions with live progress; then write notes omp follows as standing instructions, keep or edit the lessons it captured, see which sessions it learned from (forget or restore any of them), update on demand, or erase the project's memory. A meter shows how much of it fits in each session.
+- **Learned skills to review**: skills omp writes for itself are active straight away and wait in Memory → Skills with a count in the sidebar. Review each, see exactly what changed since you last looked, edit, switch off or remove it.
+- **Search conversations** (⇧⌘F, sidebar or command palette): finds what you or omp said in any session — never tool output — answered per message with the matches highlighted, in this project or all of them. ↵ opens the session scrolled to that message and marks it; ⌘↵ opens it in a new tab. Recent searches are one keystroke away.
 
 ### Fixed
 

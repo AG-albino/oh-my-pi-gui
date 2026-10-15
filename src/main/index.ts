@@ -13,12 +13,14 @@ import type { SessionKind } from "../shared/ipc-types";
 import { installQuitGuard, requestQuit } from "./app-quit";
 import { BrowserHost } from "./browser-host";
 import { bundledOmpFilename, resolveOmpCandidate } from "./bundled-omp-path";
+import { type ConversationIndex, openConversationIndex } from "./conversation-index";
 import { setupDeepLinks } from "./deep-link";
 import { ensureDefaultWorkspace } from "./default-workspace";
 import { applyGpuFallbackIfNeeded, handleGpuProcessGone } from "./gpu-fallback";
 import { firstUsableCwd } from "./initial-cwd";
 import { registerIpcHandlers } from "./ipc";
 import { LogWatcher } from "./log-watcher";
+import { MemoryWatcher } from "./memory-watcher";
 import { createMenu } from "./menu";
 import { writeRuntimeLog } from "./runtime-log";
 import { SessionIndex } from "./session-index";
@@ -218,6 +220,8 @@ let statsServer: StatsServerManager | null = null;
 let sessionIndex: SessionIndex;
 let statsClient: StatsClient;
 let logWatcher: LogWatcher;
+let memoryWatcher: MemoryWatcher | undefined;
+let conversationIndex: ConversationIndex | null = null;
 
 function errorMessage(value: unknown): { message: string; stack?: string } {
 	if (value instanceof Error) return { message: value.message, stack: value.stack };
@@ -407,6 +411,12 @@ app.whenReady().then(() => {
 		statsServer.start();
 	}
 	logWatcher = new LogWatcher();
+	memoryWatcher = new MemoryWatcher();
+	conversationIndex = openConversationIndex(
+		join(app.getPath("userData"), "conversation-index.db"),
+		sessionIndex.sessionsDir,
+		error => writeRuntimeLog({ source: "conversation-index", ...errorMessage(error) }),
+	);
 
 	// Register all handlers and sidecar listeners before loading the renderer.
 	registerIpcHandlers({
@@ -416,6 +426,8 @@ app.whenReady().then(() => {
 		statsClient,
 		statsRestart: () => statsServer?.ensureRunning() ?? "exhausted",
 		logWatcher,
+		memoryWatcher,
+		conversationIndex,
 		windowManager,
 		benchmarkBinaryPath: bundledOmp,
 		benchmarkEnv: async () => ({ ...process.env, ...(await shellSpawnEnv()), ...(await resolveProxyEnvForSpawn()) }),
@@ -445,6 +457,11 @@ app.whenReady().then(() => {
 	});
 	sessionIndex.start();
 	logWatcher.start();
+	memoryWatcher.start();
+	// Read sessions into the search index in the background; searches top it up.
+	conversationIndex
+		?.refresh()
+		.catch(error => writeRuntimeLog({ source: "conversation-index", ...errorMessage(error) }));
 	// Read before the first window restores: every tab change rewrites the store,
 	// so a later read would only see the just-restored primary window.
 	const savedLayouts = readSavedTabLayouts();
@@ -490,6 +507,8 @@ installQuitGuard(
 		browserHost?.disposeAll();
 		sessionIndex?.stop();
 		logWatcher?.stop();
+		memoryWatcher?.stop();
+		conversationIndex?.close();
 		destroyTray();
 	},
 );

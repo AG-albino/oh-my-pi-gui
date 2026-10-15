@@ -246,7 +246,21 @@ export const KEYMAP_ACTIONS = [
 		overlaySafe: false,
 		hotkeyGroup: "session",
 	},
+	{
+		id: "memory.open",
+		labelKey: "hotkeys.row.memory",
+		defaults: ["⌥⇧M"],
+		overlaySafe: false,
+		hotkeyGroup: "session",
+	},
 	{ id: "palette", labelKey: "hotkeys.row.palette", defaults: ["⌘K", "⌃K"], overlaySafe: true, hotkeyGroup: "view" },
+	{
+		id: "search.conversations",
+		labelKey: "hotkeys.row.searchConversations",
+		defaults: ["⇧⌘F"],
+		overlaySafe: false,
+		hotkeyGroup: "session",
+	},
 	{ id: "tab.new", labelKey: "hotkeys.row.tabNew", defaults: ["⌘T"], overlaySafe: false, hotkeyGroup: "session" },
 	{
 		id: "tab.newChat",

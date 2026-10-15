@@ -190,6 +190,7 @@ export function CommandPalette() {
 	const openThemePicker = useUiStore(state => state.openThemePicker);
 	const openModes = useUiStore(state => state.openModes);
 	const openAgentHub = useUiStore(state => state.openAgentHub);
+	const openMemory = useUiStore(state => state.openMemory);
 	const openPrCenter = useUiStore(state => state.openPrCenter);
 	const openHotkeys = useUiStore(state => state.openHotkeys);
 	const openImportDialog = useUiStore(state => state.openImportDialog);
@@ -359,6 +360,7 @@ export function CommandPalette() {
 				openThemePicker,
 				openModes,
 				openAgentHub,
+				openMemory,
 				openPrCenter,
 				openHotkeys,
 				openImportDialog,
@@ -419,6 +421,7 @@ export function CommandPalette() {
 			openModelCompare,
 			openBenchmark,
 			openAgentHub,
+			openMemory,
 			openPrCenter,
 			openHotkeys,
 			openImportDialog,
