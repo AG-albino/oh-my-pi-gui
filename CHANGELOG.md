@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.9.21] - 2026-10-15
+
 ### Added
 
 - **Terminal in the side panel**: the ⌘J panel gains a **Terminal** view that opens a shell in the tab's folder (**+** opens more). Agent commands that wait for input (`pty: true`) open there with a hint, so you type the answer and the agent gets the result.
@@ -20,6 +22,10 @@
 - **Learned skills to review**: skills omp writes for itself are active straight away and wait in Memory → Skills with a count in the sidebar. Review each, see exactly what changed since you last looked, edit, switch off or remove it.
 - **Search conversations** (⇧⌘F, sidebar or command palette): finds what you or omp said in any session — never tool output — answered per message with the matches highlighted, in this project or all of them. ↵ opens the session scrolled to that message and marks it; ⌘↵ opens it in a new tab. Recent searches are one keystroke away.
 - **Live dictation**: words appear as you speak and land at the caret as each phrase ends, with the live-streaming Nemotron model, the local Whisper and Parakeet models, or a cloud dictation model. The first use shows the model download. Enter or **Done** finishes, Esc discards, and Send waits until dictation is over.
+
+### Changed
+
+- Bundled agent rebuilt from upstream through **v18.11.0** (monorepo `e3270da6`): session entries record which omp build wrote them, agent `structured: true` frontmatter, and assorted fixes. An auto-cleared todo list is now hidden rather than erased, and a tab can cancel or steer only the subagents it started itself.
 
 ### Fixed
 
