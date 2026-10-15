@@ -64,6 +64,7 @@ import type {
 	PromptResultFrame,
 	RpcBtwFrame,
 	RpcCommand,
+	RpcDictationFrame,
 	RpcLiveFrame,
 	RpcResponse,
 	SessionInfoUpdateFrame,
@@ -182,6 +183,8 @@ const api: OmpApi = {
 			subscribeTab<IpcSidecarStatusPayload>(IPC_EVENTS.SIDECAR_STATUS, callback),
 		onTabSubagentFrame: (callback: (frame: SubagentFrame, tabId: string) => void) =>
 			subscribeTab<SubagentFrame>(IPC_EVENTS.SUBAGENT_FRAME, callback),
+		onTabDictationFrame: (callback: (frame: RpcDictationFrame, tabId: string) => void) =>
+			subscribeTab<RpcDictationFrame>(IPC_EVENTS.DICTATION_FRAME, callback),
 		onTabModelCatalogUpdate: (callback: (frame: ModelCatalogUpdateFrame, tabId: string) => void) =>
 			subscribeTab<ModelCatalogUpdateFrame>(IPC_EVENTS.MODEL_CATALOG_UPDATE, callback),
 		onTabCommandsUpdate: (callback: (commands: AvailableCommand[], tabId: string) => void) =>

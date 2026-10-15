@@ -22,6 +22,7 @@ import type {
 	OutboundFrame,
 	PromptResultFrame,
 	RpcBtwFrame,
+	RpcDictationFrame,
 	RpcLiveFrame,
 	RpcReadyFrame,
 	RpcResponse,
@@ -33,7 +34,7 @@ import type {
 	SidecarStatusPayload,
 	SubagentFrame,
 } from "../shared/rpc-types";
-import { BTW_FRAME_TYPES, LIVE_FRAME_TYPES, TERMINAL_FRAME_TYPES } from "../shared/rpc-types";
+import { BTW_FRAME_TYPES, DICTATION_FRAME_TYPES, LIVE_FRAME_TYPES, TERMINAL_FRAME_TYPES } from "../shared/rpc-types";
 import { EventBatcher } from "./event-batcher";
 import { attachNdjsonParser, supportsRpcProtocolV2 } from "./rpc-bridge";
 import { RpcClient } from "./rpc-client";
@@ -200,6 +201,7 @@ export interface SidecarEvents {
 	hostUriRequest: (request: HostUriRequest) => void;
 	subagentFrame: (frame: SubagentFrame) => void;
 	liveFrame: (frame: RpcLiveFrame) => void;
+	dictationFrame: (frame: RpcDictationFrame) => void;
 	/** Terminal frames, forwarded for every tab (not only visible ones): output must not be lost. */
 	terminalFrame: (frame: RpcTerminalFrame) => void;
 	btwFrame: (frame: RpcBtwFrame) => void;
@@ -502,6 +504,10 @@ export class SidecarManager extends EventEmitter {
 		if (LIVE_FRAME_TYPES.has(obj.type as string)) {
 			this.emit("liveFrame", obj as unknown as RpcLiveFrame);
 			this.emit("frame", obj);
+			return;
+		}
+		if (DICTATION_FRAME_TYPES.has(obj.type as string)) {
+			this.emit("dictationFrame", obj as unknown as RpcDictationFrame);
 			return;
 		}
 		if (TERMINAL_FRAME_TYPES.has(obj.type as string)) {

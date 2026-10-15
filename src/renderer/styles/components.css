@@ -1167,6 +1167,121 @@
 	box-shadow: var(--omp-shadow-md);
 }
 
+/* Dictation line: sits in the composer between the text and the toolbar while the
+   microphone is in use. Recording reads red (the mic button's color); the words
+   being recognized are muted until they settle into the textarea. */
+.omp-dictation {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin: 2px 12px 4px;
+	padding: 5px 6px 5px 12px;
+	min-height: 36px;
+	overflow: hidden;
+	border: 1px solid var(--omp-border-muted);
+	border-radius: 14px;
+	color: var(--omp-muted);
+	font-size: var(--text-omp-md);
+}
+
+.omp-dictation[data-phase="recording"] {
+	border-color: color-mix(in srgb, var(--omp-error) 35%, var(--omp-border-muted));
+}
+
+.omp-dictation-indicator {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	color: var(--omp-dim);
+}
+
+.omp-dictation[data-downloading] .omp-dictation-indicator {
+	color: var(--omp-accent);
+}
+
+.omp-dictation-meter {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	height: 18px;
+}
+
+.omp-dictation-meter > span {
+	width: 3px;
+	height: calc(4px + var(--omp-dictation-level, 0) * var(--omp-dictation-weight, 1) * 14px);
+	border-radius: 2px;
+	background: var(--omp-error);
+	transition: height var(--omp-motion-fast) var(--omp-ease);
+}
+
+/* The newest words stay in view: an RTL box start-aligns overflowing content on the
+   right and ellipsizes on the left, while the inner span keeps the text LTR. */
+.omp-dictation-text {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	direction: rtl;
+	text-align: left;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.omp-dictation-text > span {
+	unicode-bidi: isolate;
+}
+
+.omp-dictation-text--live {
+	color: var(--omp-text);
+	opacity: 0.62;
+}
+
+.omp-dictation-action {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 26px;
+	padding: 0 6px 0 10px;
+	border-radius: 9999px;
+	color: var(--omp-muted);
+	font-size: var(--text-omp-sm);
+	font-weight: 500;
+	transition:
+		background-color var(--omp-motion-fast) var(--omp-ease),
+		color var(--omp-motion-fast) var(--omp-ease);
+}
+
+.omp-dictation-action:hover {
+	background: var(--omp-selected-bg);
+	color: var(--omp-text);
+}
+
+.omp-dictation-action kbd {
+	padding: 0 4px;
+	border: 1px solid var(--omp-border-muted);
+	border-radius: 4px;
+	color: var(--omp-dim);
+	font-family: inherit;
+	font-size: var(--text-omp-xxs);
+	line-height: 15px;
+}
+
+.omp-dictation-progress {
+	position: absolute;
+	inset: auto 0 0;
+	height: 2px;
+	background: var(--omp-accent-dim);
+}
+
+.omp-dictation-progress > span {
+	display: block;
+	height: 100%;
+	background: var(--omp-accent);
+	transition: width var(--omp-motion-med) var(--omp-ease);
+}
+
 .omp-send-button {
 	display: flex;
 	flex-shrink: 0;

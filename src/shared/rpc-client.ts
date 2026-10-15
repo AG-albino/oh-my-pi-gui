@@ -183,6 +183,11 @@ export function createSessionRpcClient(transport: RpcTransport): SessionRpcClien
 			rpcCommand({ type: "live_start", ...options }, 60_000),
 		liveMute: (muted?: boolean) => rpcCommand({ type: "live_mute", muted }),
 		liveStop: () => rpcCommand({ type: "live_stop" }, 30_000),
+		// Start waits on the model (a first use may download it); stop waits on the final words.
+		dictationStart: () => rpcCommand({ type: "dictation_start" }, 30 * 60_000),
+		dictationAudio: (pcm16Base64: string) => rpcCommand({ type: "dictation_audio", pcm16Base64 }),
+		dictationStop: () => rpcCommand({ type: "dictation_stop" }, 120_000),
+		dictationCancel: () => rpcCommand({ type: "dictation_cancel" }),
 		debug: (params: RpcDebugParams) => rpcCommand({ type: "debug", params }, 120_000),
 		collabStart: (relayUrl?: string, view?: boolean) => rpcCommand({ type: "collab_start", relayUrl, view }, 60_000),
 		collabJoin: (link: string) => rpcCommand({ type: "collab_join", link }, 120_000),
@@ -318,8 +323,6 @@ export function createSessionRpcClient(transport: RpcTransport): SessionRpcClien
 		// Voice (speech in/out) — AgentVoice region; keep at the end of the rpc object.
 		// Generous timeouts: the first call on a fresh sidecar loads the STT/TTS
 		// model into the worker, far beyond the default 8s RPC timeout.
-		transcribeAudio: (audioBase64: string, mimeType: string) =>
-			rpcCommand({ type: "transcribe_audio", audioBase64, mimeType }, 120_000),
 		synthesizeSpeech: (text: string) => rpcCommand({ type: "synthesize_speech", text }, 60_000),
 	};
 }

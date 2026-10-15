@@ -19,9 +19,11 @@
 - **Memory**: a window (sidebar, or ⌥⇧M) shows what omp remembers about a project. Turning it on reads the project's idle sessions with live progress; then write notes omp follows as standing instructions, keep or edit the lessons it captured, see which sessions it learned from (forget or restore any of them), update on demand, or erase the project's memory. A meter shows how much of it fits in each session.
 - **Learned skills to review**: skills omp writes for itself are active straight away and wait in Memory → Skills with a count in the sidebar. Review each, see exactly what changed since you last looked, edit, switch off or remove it.
 - **Search conversations** (⇧⌘F, sidebar or command palette): finds what you or omp said in any session — never tool output — answered per message with the matches highlighted, in this project or all of them. ↵ opens the session scrolled to that message and marks it; ⌘↵ opens it in a new tab. Recent searches are one keystroke away.
+- **Live dictation**: words appear as you speak and land at the caret as each phrase ends, with the live-streaming Nemotron model, the local Whisper and Parakeet models, or a cloud dictation model. The first use shows the model download. Enter or **Done** finishes, Esc discards, and Send waits until dictation is over.
 
 ### Fixed
 
+- Signed builds could be denied the microphone for dictation; the app now carries the macOS microphone entitlement.
 - In narrow windows the side panel drawer was see-through over the title bar, and its header buttons could drag the window instead of responding to clicks.
 
 ## [0.9.20] - 2026-10-12

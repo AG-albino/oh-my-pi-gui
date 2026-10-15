@@ -16,7 +16,12 @@ interface BuilderConfig {
 	afterPack?: string;
 	extraResources?: { from: string; to: string }[];
 	protocols?: { name: string; schemes?: string[] }[];
-	mac?: { extendInfo?: Record<string, unknown> };
+	mac?: {
+		extendInfo?: Record<string, unknown>;
+		hardenedRuntime?: boolean;
+		entitlements?: string;
+		entitlementsInherit?: string;
+	};
 	win?: { target?: { target?: string; arch?: string[] }[] };
 }
 
@@ -73,6 +78,19 @@ describe("mac bundle configs", () => {
 				// a prompt that names no product and claims a capability omp never uses.
 				const namesApp = typeof value === "string" && /\bomp\b/.test(value);
 				expect(namesApp, `${file} → ${key}`).toBe(true);
+			}
+		}
+	});
+
+	it("lets the hardened runtime open the microphone the dictation prompt asks for", async () => {
+		// Hardened runtime blocks the microphone unless the signature carries this exact key;
+		// a near miss (com.apple.security.audio-input) signs fine and silently denies dictation.
+		for (const { file, config } of configs) {
+			if (config.mac?.hardenedRuntime === false) continue;
+			for (const entitlements of [config.mac?.entitlements, config.mac?.entitlementsInherit]) {
+				expect(entitlements, `${file} names no entitlements`).toBeDefined();
+				const plist = await parsePlistFile<PlistObject>(path.join(PACKAGE_ROOT, entitlements ?? ""));
+				expect(plist["com.apple.security.device.audio-input"], `${file} → ${entitlements}`).toBe(true);
 			}
 		}
 	});

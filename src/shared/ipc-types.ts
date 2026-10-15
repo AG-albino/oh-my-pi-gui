@@ -25,6 +25,7 @@ import type {
 	RpcBtwFrame,
 	RpcCommand,
 	RpcDebugParams,
+	RpcDictationFrame,
 	RpcLiveFrame,
 	RpcMcpServerInput,
 	RpcMemoryEdit,
@@ -74,6 +75,8 @@ export const IPC_EVENTS = {
 	EXTENSION_ERROR: "extension:error",
 	/** Realtime voice session state/levels/transcript update. */
 	LIVE_FRAME: "live:frame",
+	/** Dictation state, composer edits, notices, and model download progress. */
+	DICTATION_FRAME: "dictation:frame",
 	/** /btw side-question streaming delta or lifecycle record update. */
 	BTW_FRAME: "btw:frame",
 	/** Model/provider discovery completed after a bounded listing response. */
@@ -1134,6 +1137,10 @@ export interface OmpApi {
 		liveStart(options?: { voice?: string; instructions?: string }): Promise<RpcResponse>;
 		liveMute(muted?: boolean): Promise<RpcResponse>;
 		liveStop(): Promise<RpcResponse>;
+		dictationStart(): Promise<RpcResponse>;
+		dictationAudio(pcm16Base64: string): Promise<RpcResponse>;
+		dictationStop(): Promise<RpcResponse>;
+		dictationCancel(): Promise<RpcResponse>;
 		debug(params: RpcDebugParams): Promise<RpcResponse>;
 		collabStart(relayUrl?: string, view?: boolean): Promise<RpcResponse>;
 		collabJoin(link: string): Promise<RpcResponse>;
@@ -1265,7 +1272,6 @@ export interface OmpApi {
 		setHostTools(tools: unknown[]): Promise<RpcResponse>;
 		setHostUriSchemes(schemes: unknown[]): Promise<RpcResponse>;
 		// Voice (speech in/out): audio is canonical PCM16 mono 16 kHz WAV, base64.
-		transcribeAudio(audioBase64: string, mimeType: string): Promise<RpcResponse>;
 		synthesizeSpeech(text: string): Promise<RpcResponse>;
 	};
 	events: {
@@ -1289,6 +1295,7 @@ export interface OmpApi {
 		onTabBatch(callback: (events: AgentSessionEvent[], tabId: string) => void): () => void;
 		onTabSidecarStatus(callback: (status: IpcSidecarStatusPayload, tabId: string) => void): () => void;
 		onTabSubagentFrame(callback: (frame: SubagentFrame, tabId: string) => void): () => void;
+		onTabDictationFrame(callback: (frame: RpcDictationFrame, tabId: string) => void): () => void;
 		onTabModelCatalogUpdate(callback: (frame: ModelCatalogUpdateFrame, tabId: string) => void): () => void;
 		onTabCommandsUpdate(callback: (commands: AvailableCommand[], tabId: string) => void): () => void;
 		onTabConfigUpdate(callback: (payload: ConfigUpdateFrame, tabId: string) => void): () => void;

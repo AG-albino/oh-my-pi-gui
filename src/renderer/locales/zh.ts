@@ -3024,10 +3024,19 @@ export const zh: Record<string, string> = {
 
 	// Voice (mic dictation + speech output)
 	"voice.mic.start": "开始语音输入",
-	"voice.mic.stop": "停止录音——转写并插入",
+	"voice.mic.stop": "结束语音输入",
+	"voice.mic.cancelStart": "取消语音输入",
 	"voice.mic.failed": "语音输入失败",
-	"voice.mic.busy": "正在录音中",
-	"voice.mic.empty": "未捕获到音频",
+	"voice.dictation.region": "语音输入",
+	"voice.dictation.opening": "正在等待麦克风…",
+	"voice.dictation.preparing": "正在加载语音模型…",
+	"voice.dictation.downloading": "正在下载语音模型 · {percent}%",
+	"voice.dictation.listening": "正在聆听…",
+	"voice.dictation.finishing": "正在完成…",
+	"voice.dictation.done": "完成",
+	"voice.dictation.discard": "放弃",
+	"voice.dictation.cancel": "取消",
+	"voice.dictation.nothingHeard": "未检测到语音",
 	"voice.speak.failed": "语音播放失败",
 
 	// MCP server management (C1: add wizard, test connection, re-authorize)

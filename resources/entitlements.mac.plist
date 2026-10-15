@@ -11,7 +11,7 @@
 	<!-- Required when the complete Electron bundle is ad-hoc signed. -->
 	<key>com.apple.security.cs.disable-library-validation</key>
 	<true/>
-	<key>com.apple.security.audio-input</key>
+	<key>com.apple.security.device.audio-input</key>
 	<true/>
 </dict>
 </plist>

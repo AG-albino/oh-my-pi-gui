@@ -52,6 +52,7 @@ import {
 	type PromptResultFrame,
 	type RpcBtwFrame,
 	type RpcCommand,
+	type RpcDictationFrame,
 	type RpcLiveFrame,
 	type RpcResponse,
 	type RpcTerminalFrame,
@@ -426,6 +427,9 @@ export class SidecarPool {
 		});
 		wire("liveFrame", (frame: RpcLiveFrame) => {
 			forwardActive(IPC_EVENTS.LIVE_FRAME, frame);
+		});
+		wire("dictationFrame", (frame: RpcDictationFrame) => {
+			forwardActive(IPC_EVENTS.DICTATION_FRAME, frame);
 		});
 		wire("btwFrame", (frame: RpcBtwFrame) => {
 			forwardActive(IPC_EVENTS.BTW_FRAME, frame);

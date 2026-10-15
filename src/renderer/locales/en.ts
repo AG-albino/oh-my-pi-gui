@@ -3089,10 +3089,19 @@ export const en: Record<string, string> = {
 
 	// Voice (mic dictation + speech output)
 	"voice.mic.start": "Start dictation",
-	"voice.mic.stop": "Stop recording — transcribe and insert",
+	"voice.mic.stop": "Finish dictation",
+	"voice.mic.cancelStart": "Cancel dictation",
 	"voice.mic.failed": "Dictation failed",
-	"voice.mic.busy": "Recording already in progress",
-	"voice.mic.empty": "No audio was captured",
+	"voice.dictation.region": "Dictation",
+	"voice.dictation.opening": "Waiting for the microphone…",
+	"voice.dictation.preparing": "Loading the speech model…",
+	"voice.dictation.downloading": "Downloading the speech model · {percent}%",
+	"voice.dictation.listening": "Listening…",
+	"voice.dictation.finishing": "Finishing…",
+	"voice.dictation.done": "Done",
+	"voice.dictation.discard": "Discard",
+	"voice.dictation.cancel": "Cancel",
+	"voice.dictation.nothingHeard": "No speech detected",
 	"voice.speak.failed": "Speech playback failed",
 
 	// MCP server management (C1: add wizard, test connection, re-authorize)

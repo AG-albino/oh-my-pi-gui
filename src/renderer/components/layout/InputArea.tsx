@@ -3,6 +3,7 @@ import {
 	Box,
 	ChevronDown,
 	History,
+	Loader2,
 	Mic,
 	Paperclip,
 	Plus,
@@ -36,13 +37,6 @@ import {
 } from "../../lib/paste-blobs";
 import { parseQueueShorthand, splitQueuedMessages } from "../../lib/queue-input";
 import { useTabRpc } from "../../lib/tab-rpc";
-import {
-	cancelVoiceRecording,
-	evaluateSttSubmitTrigger,
-	readSttSubmitTrigger,
-	recordAndTranscribe,
-	stopVoiceRecording,
-} from "../../lib/voice";
 import { useComposerStore } from "../../stores/composer";
 import { useInputHistoryStore } from "../../stores/input-history";
 import { useModelStore } from "../../stores/model";
@@ -56,11 +50,13 @@ import { ContextMenu, type ContextMenuAnchor } from "../common/ContextMenu";
 import { ApprovalControl } from "./ApprovalControl";
 import { ComposerModes } from "./ComposerModes";
 import { ContextStrategyBar } from "./ContextStrategyBar";
+import { DictationStrip } from "./DictationStrip";
 import { HistorySearchOverlay } from "./HistorySearchOverlay";
 import { fileToImage, listMentionFiles, mentionFileCache } from "./input-area-utils";
 import { ThinkingControl } from "./ThinkingControl";
 import { type CompletionItem, type CompletionMenu, useCompletionMenu } from "./use-completion-menu";
 import { useComposerSubmit } from "./use-composer-submit";
+import { useDictation } from "./use-dictation";
 
 type SendMode = "prompt" | "steer" | "followUp";
 
@@ -115,7 +111,6 @@ export function InputArea() {
 	const [filePaths, setFilePaths] = useState<string[]>([]);
 	const [historySearchOpen, setHistorySearchOpen] = useState(false);
 	const [addMenu, setAddMenu] = useState<ContextMenuAnchor | null>(null);
-	const [recording, setRecording] = useState(false);
 	/** Pending large-paste choice: the paste already happened, this picks the form. */
 	const [pasteMenu, setPasteMenu] = useState<{ content: string; lineCount: number } | null>(null);
 	const pasteMenuRef = useRef<HTMLDivElement>(null);
@@ -193,7 +188,6 @@ export function InputArea() {
 
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
-	const mountedRef = useRef(true);
 
 	// A large-paste choice stays reversible until the user explicitly chooses a
 	// representation. Outside click cancels it instead of silently inserting
@@ -208,15 +202,6 @@ export function InputArea() {
 		document.addEventListener("pointerdown", onPointerDown);
 		return () => document.removeEventListener("pointerdown", onPointerDown);
 	}, [pasteMenu]);
-
-	// An in-flight dictation is cancelled (never transcribed) if the composer unmounts.
-	useEffect(() => {
-		mountedRef.current = true;
-		return () => {
-			mountedRef.current = false;
-			cancelVoiceRecording();
-		};
-	}, []);
 
 	// Load persisted prompt history once (prefs IPC).
 	useEffect(() => {
@@ -536,52 +521,12 @@ export function InputArea() {
 		setSending,
 	});
 
-	// Mic dictation (stt.enabled): click starts capture, click again stops and
-	// transcribes; the transcript inserts at the textarea caret. The
-	// stt.submitTrigger setting can auto-submit the utterance (TUI parity).
-	const handleMicClick = useCallback(() => {
-		if (recording) {
-			stopVoiceRecording();
-			return;
-		}
-		setRecording(true);
-		void recordAndTranscribe().then(async result => {
-			if (!mountedRef.current) return;
-			setRecording(false);
-			if ("error" in result) {
-				if (result.error) toast({ variant: "error", title: t("voice.mic.failed"), message: result.error });
-				return;
-			}
-			const utterance = result.text.trim();
-			if (!utterance) return;
-			const trigger = await readSttSubmitTrigger();
-			const evaluation = evaluateSttSubmitTrigger(utterance, trigger);
-			const insert = (
-				evaluation.trimTrailing > 0 ? utterance.slice(0, utterance.length - evaluation.trimTrailing) : utterance
-			).trimEnd();
-			if (!insert || !mountedRef.current) return;
-			// Read the live DOM value/caret: the user may have typed mid-recording.
-			const el = textareaRef.current;
-			const current = el?.value ?? "";
-			const start = el?.selectionStart ?? current.length;
-			const end = el?.selectionEnd ?? start;
-			const before = current.slice(0, start);
-			const after = current.slice(end);
-			const prefix = before.length > 0 && !before.endsWith(" ") ? " " : "";
-			const suffix = after.length === 0 ? " " : "";
-			const insertedText = `${prefix}${insert}${suffix}`;
-			const next = `${before}${insertedText}${after}`;
-			setText(next);
-			requestAnimationFrame(() => {
-				const target = textareaRef.current;
-				if (!target) return;
-				target.focus();
-				const caret = start + insertedText.length;
-				target.setSelectionRange(caret, caret);
-			});
-			if (evaluation.submit) send(next);
-		});
-	}, [recording, send, t, setText]);
+	// Mic dictation (stt.enabled): words appear while the user speaks and land at the
+	// caret as each phrase ends. Like the TUI composer mic, sending waits until the
+	// capture is over, unless stt.submitTrigger sends a spoken message itself.
+	const dictation = useDictation({ rpc, tabId: runtimeTabId, textareaRef, send: draft => send(draft) });
+	const dictating = dictation.view !== null;
+	const dictationPhase = dictation.view?.phase;
 
 	/**
 	 * Fullscreen editor dialog (TUI app.editor.external parity, GUI-native form).
@@ -673,6 +618,12 @@ export function InputArea() {
 		}
 		if (e.key === "Enter" && !e.shiftKey) {
 			e.preventDefault();
+			// While dictating, Enter finishes the capture for review instead of sending; before
+			// recording begins (or while finishing) there is nothing to finish yet.
+			if (dictating) {
+				if (dictationPhase === "recording") dictation.stop();
+				return;
+			}
 			// ⌃Enter — send as follow-up, queueing behind the current yield (TUI
 			// app.message.followUp). Idle sessions start immediately either way.
 			send(undefined, e.ctrlKey && !e.metaKey && !e.altKey ? "followUp" : undefined);
@@ -949,6 +900,10 @@ export function InputArea() {
 							/>
 						</div>
 
+						{dictation.view && (
+							<DictationStrip view={dictation.view} onDone={dictation.stop} onCancel={dictation.cancel} />
+						)}
+
 						{argHint && (
 							<div className="px-3.5 pb-1 font-mono text-omp-sm text-[var(--omp-dim)]">💡 {argHint}</div>
 						)}
@@ -1039,20 +994,40 @@ export function InputArea() {
 									/>
 								)}
 
-								{sttEnabled && (
+								{(sttEnabled || dictating) && (
 									<button
 										type="button"
-										onClick={handleMicClick}
-										disabled={collabReadOnly && !recording}
-										title={recording ? t("voice.mic.stop") : t("voice.mic.start")}
+										onClick={dictation.toggle}
+										disabled={
+											dictationPhase === "transcribing" || (!dictating && (collabReadOnly || !routeReady))
+										}
+										aria-pressed={dictating}
+										title={
+											dictationPhase === "recording"
+												? t("voice.mic.stop")
+												: dictationPhase === "transcribing"
+													? t("voice.dictation.finishing")
+													: dictating
+														? t("voice.mic.cancelStart")
+														: t("voice.mic.start")
+										}
+										aria-label={dictating ? t("voice.mic.stop") : t("voice.mic.start")}
 										className={cx(
 											"omp-pressable flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-											recording
+											dictationPhase === "recording"
 												? "bg-[var(--omp-error-dim)] text-[var(--omp-error)]"
-												: "text-[var(--omp-muted)] hover:bg-[var(--omp-selected-bg)] hover:text-[var(--omp-text)]",
+												: dictating
+													? "bg-[var(--omp-selected-bg)] text-[var(--omp-text)]"
+													: "text-[var(--omp-muted)] hover:bg-[var(--omp-selected-bg)] hover:text-[var(--omp-text)]",
 										)}
 									>
-										{recording ? <Square size={12} fill="currentColor" /> : <Mic size={16} />}
+										{dictationPhase === "recording" ? (
+											<Square size={12} fill="currentColor" />
+										) : dictating ? (
+											<Loader2 size={15} className="animate-spin" />
+										) : (
+											<Mic size={16} />
+										)}
 									</button>
 								)}
 
@@ -1162,6 +1137,7 @@ export function InputArea() {
 											status !== "ready" ||
 											sending ||
 											submissionUncertain ||
+											dictating ||
 											!hasDraft
 										}
 										aria-label={t("input.send")}

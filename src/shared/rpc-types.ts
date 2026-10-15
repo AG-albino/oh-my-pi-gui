@@ -201,10 +201,12 @@ export type RpcCommand =
 	  }
 	| { id?: string; type: "ssh_test"; host: RpcSshHostInput & { name: string } }
 
-	// Voice (speech in/out). `transcribe_audio.audioBase64` carries a canonical
-	// RIFF/WAVE buffer — PCM16, mono, 16 kHz (the STT pipeline's native rate);
-	// `mimeType` is informational ("audio/wav").
-	| { id?: string; type: "transcribe_audio"; audioBase64: string; mimeType: string }
+	// Voice. Dictation: the GUI's microphone feeds the dictation model; words come back as
+	// `dictation_*` frames. `pcm16Base64` is little-endian PCM16 mono at 16 kHz.
+	| { id?: string; type: "dictation_start" }
+	| { id?: string; type: "dictation_audio"; pcm16Base64: string }
+	| { id?: string; type: "dictation_stop" }
+	| { id?: string; type: "dictation_cancel" }
 	| { id?: string; type: "synthesize_speech"; text: string }
 	| { id?: string; type: "retry" }
 	| { id?: string; type: "clear_context" }
@@ -509,6 +511,64 @@ export const LIVE_FRAME_TYPES: ReadonlySet<string> = new Set<RpcLiveFrame["type"
 	"live_transcript",
 	"live_end",
 ]);
+
+// ============================================================================
+// Dictation (upstream shape: coding-agent rpc-dictation.ts)
+// ============================================================================
+
+/**
+ * `preparing`: loading (or downloading) the model, audio is not yet consumed;
+ * `recording`: audio is transcribed live; `transcribing`: finishing after stop.
+ */
+export type RpcDictationState = "preparing" | "recording" | "transcribing" | "idle";
+
+export interface RpcDictationStateFrame {
+	type: "dictation_state";
+	state: RpcDictationState;
+}
+
+/**
+ * Edits to the composer: `volatile` replaces the in-progress words; `commit` inserts final
+ * text at the dictation point; `clear` drops the in-progress words; `trim` deletes `count`
+ * characters before the dictation point; `submit` sends, per `stt.submitTrigger`.
+ */
+export type RpcDictationTextFrame =
+	| { type: "dictation_text"; op: "volatile"; text: string }
+	| { type: "dictation_text"; op: "commit"; text: string }
+	| { type: "dictation_text"; op: "clear" }
+	| { type: "dictation_text"; op: "trim"; count: number }
+	| { type: "dictation_text"; op: "submit" };
+
+export interface RpcDictationNoticeFrame {
+	type: "dictation_notice";
+	level: "warning" | "status";
+	message: string;
+}
+
+/** Download progress of the dictation model while preparing (integer percent, never decreasing). */
+export interface RpcDictationDownloadFrame {
+	type: "dictation_download";
+	label: string;
+	percent: number;
+}
+
+export type RpcDictationFrame =
+	| RpcDictationStateFrame
+	| RpcDictationTextFrame
+	| RpcDictationNoticeFrame
+	| RpcDictationDownloadFrame;
+
+export const DICTATION_FRAME_TYPES: ReadonlySet<string> = new Set<RpcDictationFrame["type"]>([
+	"dictation_state",
+	"dictation_text",
+	"dictation_notice",
+	"dictation_download",
+]);
+
+/** Result of `dictation_start`: `recording`, or `idle` when the start was cancelled or failed. */
+export interface RpcDictationStartResult {
+	state: RpcDictationState;
+}
 
 // ============================================================================
 // Terminals (sidecar-hosted PTYs; upstream shape: coding-agent rpc-terminal.ts)
@@ -2084,11 +2144,6 @@ export interface SessionStats {
 // Voice (speech in/out)
 // ============================================================================
 
-/** Result of `transcribe_audio`: the recognized utterance. */
-export interface TranscribeAudioResult {
-	text: string;
-}
-
 /** Result of `synthesize_speech`: local TTS output as base64 WAV (PCM16). */
 export interface SynthesizeSpeechResult {
 	audioBase64: string;
@@ -2117,6 +2172,7 @@ export type OutboundFrame =
 	| SessionInfoUpdateFrame
 	| ConfigUpdateFrame
 	| RpcLiveFrame
+	| RpcDictationFrame
 	| RpcTerminalFrame
 	| ModelCatalogUpdateFrame
 	| ExtensionErrorFrame;
