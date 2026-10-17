@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.9.22] - 2026-10-17
+
 ### Added
 
 - **Approve for this session**: when a tool call can be approved for the rest of the session, the approval dialog adds a button for it, so matching calls stop asking until you start a new session.
@@ -11,7 +13,7 @@
 
 ### Changed
 
-- Bundled agent rebuilt from upstream through **v18.11.3**: three-way tool approval, automatic prewalk (`prewalk.auto`), a configurable LSP request timeout, and assorted fixes.
+- Bundled agent rebuilt from upstream through **v18.11.3** (monorepo `8c0ef7e5`): three-way tool approval, automatic prewalk (`prewalk.auto`), a configurable LSP request timeout, and assorted fixes.
 
 ## [0.9.21] - 2026-10-15
 
