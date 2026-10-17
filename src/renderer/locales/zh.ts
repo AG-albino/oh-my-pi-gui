@@ -1742,6 +1742,7 @@ export const zh: Record<string, string> = {
 	"approval.waiting": "代理会等待你做出决定。",
 	"approval.deny": "拒绝",
 	"approval.approve": "批准",
+	"approval.approveSession": "本会话内批准 {subject}",
 	"approval.unknownTool": "未知工具",
 
 	// Extension UI dialogs
@@ -1924,6 +1925,9 @@ export const zh: Record<string, string> = {
 		"后台任务用于异步执行工具——耗时较长的 bash 命令、调试器、task 子代理。任务运行期间及结束后约 5 分钟内会显示在这里。",
 	"jobs.running": "运行中",
 	"jobs.recent": "最近",
+	"jobs.tree": "本代理及其子代理",
+	"jobs.runningCount": "{count} 个运行中",
+	"jobs.subagent": "子代理",
 	"jobs.type.bash": "bash",
 	"jobs.type.task": "task",
 	"jobs.status.running": "运行中",

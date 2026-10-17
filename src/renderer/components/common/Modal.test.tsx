@@ -4,7 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OVERLAY_EXIT_MS } from "../../hooks/use-overlay-presence";
 import { I18nProvider } from "../../lib/i18n";
-import { ApprovalDialog } from "../dialogs/ApprovalDialog";
+import { ApprovalDialog, isApprovalRequest } from "../dialogs/ApprovalDialog";
 import { Modal } from "./Modal";
 
 const { document, window, Event, HTMLElement, Node } = parseHTML("<html><body></body></html>");
@@ -116,6 +116,25 @@ describe("Modal", () => {
 		expect(activeElement?.textContent).not.toContain("Approve");
 		await pressEscape();
 		expect(respond).toHaveBeenCalledWith({ value: "Deny" });
+	});
+
+	it("answers a session-approvable prompt with the agent's exact session option", async () => {
+		const request = {
+			type: "extension_ui_request" as const,
+			id: "approval",
+			method: "select" as const,
+			title: "Allow tool: bash\ngit status",
+			options: ["Approve", "Approve `git status` for this session", "Deny"],
+		};
+		expect(isApprovalRequest(request)).toBe(true);
+		expect(isApprovalRequest({ ...request, options: ["Approve", "Maybe", "Deny"] })).toBe(false);
+		const respond = vi.fn();
+		await mount(<ApprovalDialog request={request} onRespond={respond} />);
+		const button = [...document.querySelectorAll("button")].find(b => b.textContent?.includes("for this session"));
+		await act(async () => {
+			button?.dispatchEvent(new Event("click", { bubbles: true }));
+		});
+		expect(respond).toHaveBeenCalledWith({ value: "Approve `git status` for this session" });
 	});
 	it("focuses the dialog on open and restores the trigger on close", async () => {
 		const trigger = document.createElement("button");

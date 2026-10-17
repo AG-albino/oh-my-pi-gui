@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Approve for this session**: when a tool call can be approved for the rest of the session, the approval dialog adds a button for it, so matching calls stop asking until you start a new session.
+- The Jobs window shows subagent jobs nested under the task that runs them, like `/jobs` in the terminal, with a running count.
+- `/seance <session id|path>` consults a saved session without resuming it, using the session's saved model unless you add `--model`.
+- Chinese labels for the new **Auto Prewalk**, **Auto-prewalk target** and LSP **Request Timeout** settings.
+
+### Changed
+
+- Bundled agent rebuilt from upstream through **v18.11.3**: three-way tool approval, automatic prewalk (`prewalk.auto`), a configurable LSP request timeout, and assorted fixes.
+
 ## [0.9.21] - 2026-10-15
 
 ### Added

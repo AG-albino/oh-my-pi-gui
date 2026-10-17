@@ -191,6 +191,15 @@ export const ZH_SETTINGS: Record<string, { label: string; description?: string }
 		description:
 			"先以当前模型开始，在计划提示的待办列表生成后、首次编辑/写入时切换到快速/便宜的模型（默认 'smol' 角色）——强模型负责规划、提交待办并开始实现，然后交接。可用 --prewalk / --no-prewalk 按会话覆盖。",
 	},
+	"prewalk.auto": {
+		label: "自动 Prewalk",
+		description:
+			"通过 'judge' 角色解析出的原生判定模型，判断每个新的顶层用户任务是否把困难推理集中在前期。需要原生判定模型；没有时不做分类。与“启用 Prewalk”相互独立。",
+	},
+	"prewalk.autoTarget": {
+		label: "自动 Prewalk 目标",
+		description: "自动 Prewalk 在首次编辑/写入时交接到的模型或角色（默认 '@smol'）。",
+	},
 	// 17.3.0 移除了全局 advisor.subagents（迁移至 task.agentAdvisor）。
 	"task.agentAdvisor": {
 		label: "子代理顾问（按 agent）",
@@ -694,6 +703,11 @@ export const ZH_SETTINGS: Record<string, { label: string; description?: string }
 	"lsp.formatOnWrite": { label: "写入后格式化", description: "写入代码文件后自动使用 LSP 格式化" },
 	"lsp.diagnosticsOnWrite": { label: "写入后诊断", description: "写入代码文件后返回 LSP 诊断" },
 	"lsp.diagnosticsOnEdit": { label: "编辑后诊断", description: "编辑代码文件后返回 LSP 诊断" },
+	"lsp.requestTimeout": {
+		label: "请求超时",
+		description:
+			"代理未指定超时时，等待语言服务器诊断、悬停等应答的秒数；编辑后的延迟诊断至少等待这么久。冷启动较慢的服务器可调高。lsp 工具的 timeout 参数仍可按次调高或调低。",
+	},
 	"lsp.diagnosticsDeduplicate": {
 		label: "诊断去重",
 		description: "抑制文件中已展示过的编辑后 LSP 诊断，只呈现新增或变化的",

@@ -1793,6 +1793,7 @@ export const en: Record<string, string> = {
 	"approval.waiting": "The agent waits until you decide.",
 	"approval.deny": "Deny",
 	"approval.approve": "Approve",
+	"approval.approveSession": "Approve {subject} for this session",
 	"approval.unknownTool": "unknown tool",
 
 	// Extension UI dialogs
@@ -1978,6 +1979,9 @@ export const en: Record<string, string> = {
 		"Background jobs run async tools — long bash commands, debuggers, task subagents. They appear here while alive and for ~5 minutes after.",
 	"jobs.running": "Running",
 	"jobs.recent": "Recent",
+	"jobs.tree": "This agent and its subagents",
+	"jobs.runningCount": "{count} running",
+	"jobs.subagent": "subagent",
 	"jobs.type.bash": "bash",
 	"jobs.type.task": "task",
 	"jobs.status.running": "running",

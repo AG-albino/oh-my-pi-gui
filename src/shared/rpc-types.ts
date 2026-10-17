@@ -390,16 +390,30 @@ export interface RpcAsyncJobItem {
 	/** Epoch ms when the job started. */
 	startTime: number;
 	endedAt?: number;
+	/** Subagent a task job runs. */
 	agentId?: string;
+	/** Subagent that owns the job; absent for the viewing agent's own jobs. */
+	ownerId?: string;
 	cancellationPending?: boolean;
 	resultPreview?: string;
 	errorPreview?: string;
 	previewTruncated?: boolean;
 }
 
+/** One get_jobs tree row: a job (a task job also heads its subagent), or a header for a subagent with no listed task job. */
+export interface RpcJobTreeRow {
+	/** 0 for the viewing agent's own jobs; one more per subagent level. */
+	depth: number;
+	job?: RpcAsyncJobItem;
+	/** Subagent this row heads. */
+	agentId?: string;
+}
+
 /** get_jobs result: running jobs first, then recent (TUI /jobs ordering). */
 export interface RpcJobsResult {
 	jobs: RpcAsyncJobItem[];
+	/** This agent's and its subagents' jobs nested as TUI /jobs shows them, in display order (newer sidecars). */
+	tree?: RpcJobTreeRow[];
 }
 
 export type RpcResponse = RpcResponseSuccess | RpcResponseError;

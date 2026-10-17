@@ -1,9 +1,11 @@
 /**
  * Tool-approval dialog. The sidecar routes tool approval through a plain
- * `select` extension-UI request with exactly ["Approve", "Deny"] options and
- * a title of the form "Allow tool: <name>\n<details>". This component gives
- * that prompt a dedicated surface: tool name, capability tier badge, and a
- * monospace args preview. Deny (or closing the dialog) answers confirmed:false.
+ * `select` extension-UI request with ["Approve", "Deny"] options — plus
+ * "Approve <subject> for this session" between them when the call can be
+ * approved for the rest of the session — and a title of the form
+ * "Allow tool: <name>\n<details>". This component gives that prompt a
+ * dedicated surface: tool name, capability tier badge, and a monospace args
+ * preview. Deny (or closing the dialog) answers with the "Deny" option.
  */
 
 import { ShieldAlert, ShieldCheck } from "lucide-react";
@@ -13,19 +15,24 @@ import { useT } from "../../lib/i18n";
 import { Badge, type BadgeVariant, Button, Modal } from "../common";
 
 const APPROVAL_TITLE_PREFIX = "Allow tool: ";
+const SESSION_OPTION = /^Approve (.+) for this session$/;
 
 type ApprovalSelect = Extract<ExtensionUIRequest, { method: "select" }>;
 
 export type ApprovalResponse = { value: string } | { confirmed: boolean } | { cancelled: true };
 
 export function isApprovalRequest(request: ExtensionUIRequest): request is ApprovalSelect {
-	return (
-		request.method === "select" &&
-		request.options.length === 2 &&
-		request.options[0] === "Approve" &&
-		request.options[1] === "Deny" &&
-		request.title.startsWith(APPROVAL_TITLE_PREFIX)
-	);
+	if (request.method !== "select" || !request.title.startsWith(APPROVAL_TITLE_PREFIX)) return false;
+	const { options } = request;
+	if (options[0] !== "Approve" || options.at(-1) !== "Deny") return false;
+	return options.length === 2 || (options.length === 3 && SESSION_OPTION.test(options[1]!));
+}
+
+/** The "approve for this session" option and the subject it names, when the prompt offers one. */
+function sessionOption(request: ApprovalSelect): { value: string; subject: string } | undefined {
+	const value = request.options.length === 3 ? request.options[1] : undefined;
+	const subject = value === undefined ? undefined : SESSION_OPTION.exec(value)?.[1];
+	return value !== undefined && subject !== undefined ? { value, subject } : undefined;
 }
 
 const READ_TOOLS = new Set([
@@ -80,6 +87,7 @@ export function ApprovalDialog({
 	}, [request.title, t]);
 
 	const tier = tierFor(toolName);
+	const session = sessionOption(request);
 	const deny = () => onRespond({ value: "Deny" });
 
 	return (
@@ -109,6 +117,17 @@ export function ApprovalDialog({
 						<Button onClick={deny} size="md" variant="danger">
 							{t("approval.deny")}
 						</Button>
+						{session ? (
+							<Button
+								className="max-w-64"
+								onClick={() => onRespond({ value: session.value })}
+								size="md"
+								title={session.value}
+								variant="secondary"
+							>
+								<span className="truncate">{t("approval.approveSession", { subject: session.subject })}</span>
+							</Button>
+						) : null}
 						<Button
 							variant="primary"
 							size="md"
