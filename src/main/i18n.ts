@@ -1,9 +1,11 @@
 import { app } from "electron";
 import Store from "electron-store";
+import { isLanguage, type Language, languageFromLocale } from "../shared/languages";
+import { RU_MAIN_TEXT } from "./native-ru";
 
-export type MainLanguage = "en" | "zh";
+export type MainLanguage = Language;
 
-type MainTextKey =
+export type MainTextKey =
 	| "browser.back"
 	| "browser.copyImage"
 	| "browser.copyImageAddress"
@@ -83,7 +85,7 @@ type MainTextKey =
 	| "updates.openInstallerFailed"
 	| "updates.unsupportedArchitecture";
 
-const TEXT: Record<MainTextKey, Record<MainLanguage, string>> = {
+const TEXT: Record<MainTextKey, Record<Exclude<MainLanguage, "ru">, string>> = {
 	"browser.back": { en: "Back", zh: "后退" },
 	"browser.copyImage": { en: "Copy Image", zh: "复制图片" },
 	"browser.copyImageAddress": { en: "Copy Image Address", zh: "复制图片地址" },
@@ -195,8 +197,8 @@ const prefs = new Store<{ language?: MainLanguage }>({ name: "prefs" });
 
 export function getMainLanguage(): MainLanguage {
 	const stored = prefs.get("language");
-	if (stored === "en" || stored === "zh") return stored;
-	return app.getLocale().toLowerCase().startsWith("zh") ? "zh" : "en";
+	if (isLanguage(stored)) return stored;
+	return languageFromLocale(app.getLocale());
 }
 
 export function mainT(
@@ -204,8 +206,7 @@ export function mainT(
 	language = getMainLanguage(),
 	params?: Record<string, string | number>,
 ): string {
-	if (!params) return TEXT[key][language];
-	return TEXT[key][language].replace(/\{(\w+)\}/g, (match, name: string) =>
-		name in params ? String(params[name]) : match,
-	);
+	const text = language === "ru" ? RU_MAIN_TEXT[key] : TEXT[key][language];
+	if (!params) return text;
+	return text.replace(/\{(\w+)\}/g, (match, name: string) => (name in params ? String(params[name]) : match));
 }

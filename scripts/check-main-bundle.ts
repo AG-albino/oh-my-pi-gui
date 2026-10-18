@@ -20,6 +20,8 @@ const allowed = new Set<string>([
 	"electron",
 	"original-fs",
 	"node:original-fs",
+	// Electron 36 supplies node:sqlite; Bun's builtinModules list omits it.
+	"node:sqlite",
 	...builtinModules,
 	...builtinModules.map(m => `node:${m}`),
 ]);

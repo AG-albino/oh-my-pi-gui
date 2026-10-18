@@ -46,6 +46,7 @@ import type {
 	IpcUpdateLaunchProfilePayload,
 } from "../shared/ipc-types";
 import { IPC_COMMANDS, IPC_EVENTS, type RunProgressState, type TrayState } from "../shared/ipc-types";
+import { isLanguage } from "../shared/languages";
 import { parseLaunchProfile } from "../shared/launch-profile";
 import type { RpcCommand, RpcSessionState } from "../shared/rpc-types";
 import { requestQuit } from "./app-quit";
@@ -963,8 +964,11 @@ export function registerIpcHandlers(deps: IpcDeps): void {
 			throw new Error("Invalid preference key");
 		}
 		prefsStore.set(payload.key, payload.value);
-		if (payload.key === "language" && (payload.value === "en" || payload.value === "zh")) {
+		if (payload.key === "language" && isLanguage(payload.value)) {
 			createMenu(windowManager, deps.spawnWindow, deps.browserHost);
+			for (const window of BrowserWindow.getAllWindows()) {
+				window.webContents.send(IPC_EVENTS.LANGUAGE_CHANGED, payload.value);
+			}
 		}
 	});
 

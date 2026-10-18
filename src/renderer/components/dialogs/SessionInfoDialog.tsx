@@ -1,3 +1,4 @@
+import { getFormattingLocale } from "../../lib/i18n";
 import { useTabRpc } from "../../lib/tab-rpc";
 /**
  * Session info panel: native rendering of rpc.getSessionStats() — identity,
@@ -39,7 +40,7 @@ function Section({ title, rows }: { title: string; rows: Row[] }) {
 }
 
 function formatCredit(value: number): string {
-	return value.toLocaleString(undefined, { maximumFractionDigits: 4 });
+	return value.toLocaleString(getFormattingLocale(), { maximumFractionDigits: 4 });
 }
 
 export function SessionInfoDialog() {
@@ -101,7 +102,7 @@ export function SessionInfoDialog() {
 									{ label: t("sessionInfo.premiumRequests"), value: String(stats.history.premiumRequests) },
 									{
 										label: t("sessionInfo.sampledAt"),
-										value: new Date(stats.history.sampledAt).toLocaleTimeString(),
+										value: new Date(stats.history.sampledAt).toLocaleTimeString(getFormattingLocale()),
 									},
 								]}
 							/>

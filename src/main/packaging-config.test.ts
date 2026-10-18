@@ -59,7 +59,7 @@ describe("mac bundle configs", () => {
 				.map(entry => entry.file)
 				.sort()
 				.join(","),
-		).toBe("electron-builder.trial.yml,electron-builder.x64.yml,electron-builder.yml");
+		).toBe("electron-builder.x64.yml,electron-builder.yml");
 	});
 
 	it("registers the omp:// scheme that src/main/deep-link.ts handles", () => {

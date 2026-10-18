@@ -55,6 +55,7 @@ import { setCodeLineNumbersPref } from "../../lib/markdown";
 import { clearSessionContext, retryLastTurn as retryLastTurnShared } from "../../lib/messages";
 import { dumpTranscriptToClipboard } from "../../lib/transcript-copy";
 import { en } from "../../locales/en";
+import { ru } from "../../locales/ru";
 import { zh } from "../../locales/zh";
 import { openHandoffDialog } from "../../stores/fork-handoff";
 import { useMessagesStore } from "../../stores/messages";
@@ -77,7 +78,7 @@ import { SchemaTabContent } from "./pages/SchemaTabContent";
 import { SecuritySettingsPage } from "./SecuritySettingsPage";
 import { SkillsSettingsPage } from "./SkillsSettingsPage";
 import { SshSettingsPage } from "./SshSettingsPage";
-import { ZH_SETTINGS } from "./schema-zh";
+import { settingTranslation } from "./schema-localization";
 import { isSettingVisibleInGui, matchesSettingSearch, resolveSettingsTarget } from "./settings-schema-utils";
 import {
 	ADVANCED_TAB_ID,
@@ -619,7 +620,7 @@ export function SettingsWindow() {
 		const q = query.trim().normalize("NFKC").toLowerCase();
 		if (!q) return [];
 		return GUI_SETTING_SEARCH_ITEMS.filter(item =>
-			`${item.id} ${en[item.labelKey]} ${zh[item.labelKey]} ${item.aliases}`
+			`${item.id} ${en[item.labelKey]} ${zh[item.labelKey]} ${ru[item.labelKey]} ${item.aliases}`
 				.normalize("NFKC")
 				.toLowerCase()
 				.includes(q),
@@ -1510,9 +1511,7 @@ export function SettingsWindow() {
 												onClick={() => locateSetting(tabId, `setting-${entry.path}`)}
 											>
 												<span className="text-omp-md">
-													{lang === "zh"
-														? (ZH_SETTINGS[entry.path]?.label ?? entry.label ?? entry.path)
-														: (entry.label ?? entry.path)}
+													{settingTranslation(lang, entry.path)?.label ?? entry.label ?? entry.path}
 												</span>
 												<span className="mt-1 block text-omp-xs text-(--omp-dim)">{entry.path}</span>
 											</button>

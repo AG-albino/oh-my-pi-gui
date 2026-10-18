@@ -25,8 +25,7 @@ import { ProviderLimitsEditor } from "./editors/ProviderLimitsEditor";
 import { RecordKvEditor } from "./editors/RecordKvEditor";
 import { Toggle } from "./editors/Toggle";
 import { ModelValueSelect, settingRefKind } from "./ModelValueSelect";
-import { ZH_SCHEMA_OPTION_TEXT } from "./schema-option-zh";
-import { ZH_SETTINGS } from "./schema-zh";
+import { schemaOptionText, settingTranslation } from "./schema-localization";
 
 let themePreviewActive = false;
 function previewAgentTheme(name: string | null): void {
@@ -147,15 +146,15 @@ function SchemaSettingRow({
 	);
 
 	const { lang } = useLang();
-	const zhEntry = lang === "zh" ? ZH_SETTINGS[entry.path] : undefined;
+	const localizedEntry = settingTranslation(lang, entry.path);
 	const label =
 		entry.path === "tui.renderMermaid"
 			? t("settings.gui.allowMermaid")
-			: (zhEntry?.label ?? entry.label ?? entry.path);
+			: (localizedEntry?.label ?? entry.label ?? entry.path);
 	const description =
 		entry.path === "tui.renderMermaid"
 			? t("settings.gui.allowMermaidDesc")
-			: (zhEntry?.description ?? entry.description);
+			: (localizedEntry?.description ?? entry.description);
 	const baseDraft = draftFor(entry, value);
 	const dirty = draft !== null && draft !== baseDraft;
 
@@ -347,7 +346,7 @@ function SchemaSettingRow({
 								ordered={entry.ordered === true}
 								options={entry.options?.map(option => ({
 									value: option.value,
-									label: lang === "zh" ? (ZH_SCHEMA_OPTION_TEXT[option.label] ?? option.label) : option.label,
+									label: schemaOptionText(lang, option.label),
 								}))}
 								values={value as string[]}
 							/>
@@ -454,14 +453,10 @@ function SchemaSettingRow({
 						{options.map(option => (
 							<option
 								key={option.value}
-								title={
-									lang === "zh" && option.description
-										? (ZH_SCHEMA_OPTION_TEXT[option.description] ?? option.description)
-										: option.description
-								}
+								title={option.description ? schemaOptionText(lang, option.description) : undefined}
 								value={option.value}
 							>
-								{lang === "zh" ? (ZH_SCHEMA_OPTION_TEXT[option.label] ?? option.label) : option.label}
+								{schemaOptionText(lang, option.label)}
 							</option>
 						))}
 					</select>

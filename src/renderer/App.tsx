@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo } from "react";
 import type { MenuAction, MenuActionPayload, RunProgressState } from "../shared/ipc-types";
+import { nextLanguage } from "../shared/languages";
 import { ToastStack } from "./components/common";
 import { ActiveToolsDialog } from "./components/dialogs/ActiveToolsDialog";
 import { BranchPickerDialog } from "./components/dialogs/BranchPickerDialog";
@@ -584,7 +585,7 @@ export function App() {
 				return;
 			}
 			if (action === "toggle-language") {
-				setLang(lang === "zh" ? "en" : "zh");
+				setLang(nextLanguage(lang));
 				return;
 			}
 			// New tab actions never touch the live run — they must stay OUT of the

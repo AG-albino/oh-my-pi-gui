@@ -1,4 +1,5 @@
 import { formatCost } from "./format";
+import { getFormattingLocale } from "./i18n";
 /**
  * chart.js registration + theme-aware defaults. Every stats route imports
  * this module for its side effects before rendering react-chartjs-2 charts.
@@ -176,7 +177,7 @@ export function bucketLabels(timestamps: number[]): string[] {
 	return timestamps.map(ts => {
 		const date = new Date(ts);
 		return short
-			? date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
-			: date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+			? date.toLocaleTimeString(getFormattingLocale(), { hour: "2-digit", minute: "2-digit" })
+			: date.toLocaleDateString(getFormattingLocale(), { month: "short", day: "numeric" });
 	});
 }

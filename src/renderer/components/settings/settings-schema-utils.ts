@@ -6,6 +6,7 @@ import { GUI_DISPLAY_LEGACY_PATHS } from "../../lib/display-preferences";
  */
 
 import type { SettingEntry } from "../../../shared/rpc-types";
+import { RU_SETTINGS } from "./schema-ru";
 import { ZH_SETTINGS } from "./schema-zh";
 
 /**
@@ -144,7 +145,8 @@ export function resolveSettingsTarget(target: string | null | undefined): {
 /** Search the displayed Chinese labels as well as wire paths and English metadata. */
 export function matchesSettingSearch(entry: SettingEntry, query: string): boolean {
 	const zh = ZH_SETTINGS[entry.path];
-	const haystack = [entry.path, entry.label, entry.description, zh?.label, zh?.description]
+	const ru = RU_SETTINGS[entry.path];
+	const haystack = [entry.path, entry.label, entry.description, zh?.label, zh?.description, ru?.label, ru?.description]
 		.join(" ")
 		.normalize("NFKC")
 		.toLowerCase();
