@@ -38,9 +38,12 @@ const PRIVACY_KEYS = [
 ];
 
 function macConfigs(): { file: string; config: BuilderConfig }[] {
+	// .trial.yml configs are gitignored personal overrides — see .gitignore.
+	// They exist on some checkouts and not others, so they can't be part of
+	// the committed-config contract.
 	return fs
 		.readdirSync(PACKAGE_ROOT)
-		.filter(name => /^electron-builder.*\.yml$/.test(name))
+		.filter(name => /^electron-builder.*\.yml$/.test(name) && !name.endsWith(".trial.yml"))
 		.map(file => ({
 			file,
 			config: parse(fs.readFileSync(path.join(PACKAGE_ROOT, file), "utf8")) as BuilderConfig,
