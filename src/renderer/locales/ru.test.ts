@@ -19,7 +19,11 @@ describe("Russian locale completeness", () => {
 	});
 	it("only leaves reviewed technical names and code in English", () => {
 		for (const [key, value] of Object.entries(en)) {
-			if (identicalKeys.includes(key) || !/[a-z]/i.test(value.replace(/\{\w+\}/g, ""))) continue;
+			if (identicalKeys.includes(key)) {
+				expect(ru[key], key).toBe(value);
+				continue;
+			}
+			if (!/[a-z]/i.test(value.replace(/\{\w+\}/g, ""))) continue;
 			expect(ru[key], key).not.toBe(value);
 		}
 	});
