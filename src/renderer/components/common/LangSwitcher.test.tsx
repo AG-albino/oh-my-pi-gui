@@ -8,6 +8,7 @@ import { parseHTML } from "linkedom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
+import type { Language } from "../../../shared/languages";
 import { I18nProvider } from "../../lib/i18n";
 import { LangSwitcher } from "./LangSwitcher";
 
@@ -19,6 +20,7 @@ globals.window = window;
 globals.Event = Event;
 globals.HTMLElement = HTMLElement;
 globals.IS_REACT_ACT_ENVIRONMENT = true;
+Object.assign(window, { innerWidth: 1280, innerHeight: 900 });
 
 interface TestElement {
 	textContent: string | null;
@@ -65,7 +67,52 @@ afterEach(async () => {
 });
 
 describe("LangSwitcher", () => {
-	it("shows the current language and toggles EN ⇄ 中文 on click", async () => {
+	it("receives language changes from another window without echoing writes", async () => {
+		let receive: ((language: Language) => void) | undefined;
+		let unsubscribed = false;
+		const writes: unknown[] = [];
+		const store: Record<string, string> = {};
+		globals.localStorage = {
+			getItem: (key: string) => store[key] ?? null,
+			setItem: (key: string, value: string) => {
+				store[key] = value;
+			},
+		};
+		Object.defineProperty(window, "omp", {
+			configurable: true,
+			value: {
+				prefs: {
+					get: async () => "en",
+					set: async (...args: unknown[]) => {
+						writes.push(args);
+					},
+					onLanguageChanged: (callback: (language: Language) => void) => {
+						receive = callback;
+						return () => {
+							unsubscribed = true;
+						};
+					},
+				},
+			},
+		});
+		try {
+			await mountSwitcher();
+			await act(async () => {
+				receive?.("ru");
+			});
+			expect(document.querySelector("button")?.textContent).toContain("RU");
+			expect(store["omp.lang"]).toBe("ru");
+			expect(document.documentElement.lang).toBe("ru");
+			expect(writes).toEqual([]);
+			await act(async () => root?.unmount());
+			root = undefined;
+			expect(unsubscribed).toBe(true);
+		} finally {
+			delete (window as unknown as { omp?: unknown }).omp;
+			delete globals.localStorage;
+		}
+	});
+	it("offers every language and selects Russian and Chinese explicitly", async () => {
 		await mountSwitcher();
 		const button = document.querySelector("button") as unknown as TestElement;
 		expect(button.textContent).toContain("EN");
@@ -74,18 +121,31 @@ describe("LangSwitcher", () => {
 			button.dispatchEvent(new Event("click", { bubbles: true, cancelable: true }));
 		});
 		await flush();
-		expect(button.textContent).toContain("中文");
+		const choices = [...document.querySelectorAll('[role="menuitem"]')];
+		expect(choices.map(choice => choice.textContent)).toEqual(["English✓", "Русский", "中文"]);
+		await act(async () => {
+			choices[1].dispatchEvent(new Event("click", { bubbles: true }));
+		});
+		expect(button.textContent).toContain("RU");
+		expect(document.documentElement.lang).toBe("ru");
+		expect(document.querySelector('[role="menu"]')).toBeNull();
 
 		await act(async () => {
 			button.dispatchEvent(new Event("click", { bubbles: true, cancelable: true }));
 		});
 		await flush();
-		expect(button.textContent).toContain("EN");
+		await act(async () => {
+			document.querySelectorAll('[role="menuitem"]')[2].dispatchEvent(new Event("click", { bubbles: true }));
+		});
+		expect(button.textContent).toContain("中文");
 	});
 
-	it("rehydrates the persisted language (omp.lang=zh → 中文)", async () => {
+	it.each([
+		["zh", "中文"],
+		["ru", "RU"],
+	])("rehydrates the persisted language %s", async (language, label) => {
 		// I18nProvider reads the LANG_KEY at mount; install a stub store first.
-		const store: Record<string, string> = { "omp.lang": "zh" };
+		const store: Record<string, string> = { "omp.lang": language };
 		globals.localStorage = {
 			getItem: (key: string) => store[key] ?? null,
 			setItem: (key: string, value: string) => {
@@ -97,7 +157,7 @@ describe("LangSwitcher", () => {
 		};
 		try {
 			await mountSwitcher();
-			expect(document.querySelector("button")?.textContent).toContain("中文");
+			expect(document.querySelector("button")?.textContent).toContain(label);
 		} finally {
 			delete globals.localStorage;
 		}

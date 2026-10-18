@@ -53,7 +53,7 @@ export function useTraySync(): void {
 
 		window.omp.tray.pushState({
 			status: trayStatus,
-			language: lang === "en" ? "en" : "zh",
+			language: lang,
 			cwd: cwd || null,
 			projectName: cwd ? basename(cwd) || cwd : "omp",
 			modelId: model?.id ?? null,

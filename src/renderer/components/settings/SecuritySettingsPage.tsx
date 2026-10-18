@@ -7,7 +7,7 @@ import type {
 	RpcSecurityScanResult,
 	RpcSecurityTargetInput,
 } from "../../../shared/rpc-types";
-import { useT } from "../../lib/i18n";
+import { getFormattingLocale, useT } from "../../lib/i18n";
 import { useTabRpc } from "../../lib/tab-rpc";
 import { useSessionStore } from "../../stores/session";
 import { Button, ConfirmDialog, Input, Spinner } from "../common";
@@ -30,7 +30,7 @@ function formatWhen(value?: string): string {
 	if (delta < 60_000) return "<1m";
 	if (delta < 3_600_000) return `${Math.floor(delta / 60_000)}m`;
 	if (delta < 86_400_000) return `${Math.floor(delta / 3_600_000)}h`;
-	return date.toLocaleDateString();
+	return date.toLocaleDateString(getFormattingLocale());
 }
 
 function targetLabel(target: RpcSecurityTargetInput): string {

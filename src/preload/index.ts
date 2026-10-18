@@ -46,6 +46,7 @@ import type {
 	UpdateStatus,
 } from "../shared/ipc-types";
 import { IPC_COMMANDS, IPC_EVENTS } from "../shared/ipc-types";
+import type { Language } from "../shared/languages";
 import { createSessionRpcClient, timeoutForCommand } from "../shared/rpc-client";
 import type {
 	AgentSessionEvent,
@@ -320,6 +321,7 @@ const api: OmpApi = {
 	},
 
 	prefs: {
+		onLanguageChanged: callback => subscribe<Language>(IPC_EVENTS.LANGUAGE_CHANGED, callback),
 		get: (key?: string) => ipcRenderer.invoke(IPC_COMMANDS.PREFS_GET, { key }),
 		set: (key: string, value: unknown) => ipcRenderer.invoke(IPC_COMMANDS.PREFS_SET, { key, value }),
 		updateLaunchProfile: (cwd, patch) => ipcRenderer.invoke(IPC_COMMANDS.PREFS_UPDATE_LAUNCH_PROFILE, { cwd, patch }),

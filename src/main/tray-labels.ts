@@ -6,9 +6,11 @@
  */
 
 import type { TrayState } from "../shared/ipc-types";
+import type { Language } from "../shared/languages";
+import { RU_TRAY_TEXT } from "./native-ru";
 
 export type TrayStatus = TrayState["status"];
-export type TrayLang = "zh" | "en";
+export type TrayLang = Language;
 export type TrayApprovalMode = TrayState["approvalMode"];
 
 /** Tray-label strings, translated in main (the renderer reports the language). */
@@ -42,7 +44,7 @@ export const TRAY_LABELS = {
 export type TrayLabelKey = keyof typeof TRAY_LABELS;
 
 export function t(lang: TrayLang, key: TrayLabelKey): string {
-	return TRAY_LABELS[key][lang];
+	return lang === "ru" ? RU_TRAY_TEXT[key] : TRAY_LABELS[key][lang];
 }
 
 /** Which run state to show; the aggregate across windows, never per-window. */
@@ -82,7 +84,7 @@ export function formatTokens(n: number): string {
 /** Hover text: the icon itself stays a static template mark by design. */
 export function trayTooltip(state: TrayState | null): string {
 	if (!state) return "omp";
-	return `omp — ${state.projectName} · ${statusLabel(state.language === "en" ? "en" : "zh", state.status)}`;
+	return `omp — ${state.projectName} · ${statusLabel(state.language, state.status)}`;
 }
 
 /**

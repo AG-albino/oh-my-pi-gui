@@ -38,9 +38,12 @@ const PRIVACY_KEYS = [
 ];
 
 function macConfigs(): { file: string; config: BuilderConfig }[] {
+	// .trial.yml configs are gitignored personal overrides — see .gitignore.
+	// They exist on some checkouts and not others, so they can't be part of
+	// the committed-config contract.
 	return fs
 		.readdirSync(PACKAGE_ROOT)
-		.filter(name => /^electron-builder.*\.yml$/.test(name))
+		.filter(name => /^electron-builder.*\.yml$/.test(name) && !name.endsWith(".trial.yml"))
 		.map(file => ({
 			file,
 			config: parse(fs.readFileSync(path.join(PACKAGE_ROOT, file), "utf8")) as BuilderConfig,
@@ -59,7 +62,7 @@ describe("mac bundle configs", () => {
 				.map(entry => entry.file)
 				.sort()
 				.join(","),
-		).toBe("electron-builder.trial.yml,electron-builder.x64.yml,electron-builder.yml");
+		).toBe("electron-builder.x64.yml,electron-builder.yml");
 	});
 
 	it("registers the omp:// scheme that src/main/deep-link.ts handles", () => {

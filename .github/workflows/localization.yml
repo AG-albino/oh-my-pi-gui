@@ -1,0 +1,26 @@
+name: Localization validation
+
+on:
+  pull_request:
+  push:
+    branches: [feat/russian-localization, ru-distribution]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+      - run: bun install --frozen-lockfile
+      - run: bun run check:types
+      - run: bunx vitest run --maxWorkers=2
+      - run: bun run build

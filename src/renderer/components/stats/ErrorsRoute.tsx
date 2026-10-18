@@ -1,3 +1,4 @@
+import { getFormattingLocale } from "../../lib/i18n";
 /**
  * Errors: failed requests with messages, newest first.
  */
@@ -32,7 +33,7 @@ export function ErrorsRoute({ range, refreshKey }: { range: StatsRange; refreshK
 				label: t("stats.col.when"),
 				render: row => (
 					<span className="whitespace-nowrap text-(--omp-muted)">
-						{new Date(row.timestamp).toLocaleString(undefined, {
+						{new Date(row.timestamp).toLocaleString(getFormattingLocale(), {
 							month: "short",
 							day: "numeric",
 							hour: "2-digit",

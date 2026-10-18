@@ -4,6 +4,7 @@
  */
 
 import type { KeyEventLike } from "./chord";
+import type { Language } from "./languages";
 import type { LaunchProfile } from "./launch-profile";
 import type { SessionModelOverride } from "./model-restore";
 import type {
@@ -47,6 +48,8 @@ import type {
 // ============================================================================
 
 export const IPC_EVENTS = {
+	/** Global interface language changed in any app window. */
+	LANGUAGE_CHANGED: "prefs:language-changed",
 	/** Batched agent session events (16ms cadence) */
 	EVENTS_BATCH: "rpc:events",
 	/** Sidecar connection status change */
@@ -389,7 +392,7 @@ export type IpcBenchmarkRunResult =
 /** Compact snapshot the renderer pushes to main to build the tray menu. */
 export interface TrayState {
 	status: "idle" | "streaming" | "waiting" | "error";
-	language: "zh" | "en";
+	language: Language;
 	cwd: string | null;
 	projectName: string;
 	modelId: string | null;
@@ -1394,6 +1397,7 @@ export interface OmpApi {
 	prefs: {
 		get(key?: string): Promise<unknown>;
 		set(key: string, value: unknown): Promise<void>;
+		onLanguageChanged(callback: (language: Language) => void): () => void;
 		updateLaunchProfile(cwd: string, patch: Partial<LaunchProfile>): Promise<LaunchProfile>;
 	};
 	sidecar: {

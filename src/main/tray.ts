@@ -10,6 +10,8 @@
 
 import { app, Menu, nativeImage, Tray } from "electron";
 import { IPC_EVENTS, type MenuAction, type MenuActionPayload, type TrayState } from "../shared/ipc-types";
+import { languageDetails } from "../shared/languages";
+import { getMainLanguage } from "./i18n";
 import { approvalLabel, formatTokens, menuSignature, type TrayLang, t, trayTooltip } from "./tray-labels";
 import type { SpawnWindow, WindowManager } from "./window";
 
@@ -81,7 +83,7 @@ function send(windowManager: WindowManager, action: MenuAction, payload?: MenuAc
 }
 
 function buildContextMenu(windowManager: WindowManager, state: TrayState | null): Electron.Menu {
-	const lang: TrayLang = state?.language === "en" ? "en" : "zh";
+	const lang: TrayLang = state?.language ?? getMainLanguage();
 	const template: Electron.MenuItemConstructorOptions[] = [];
 
 	// Header: app + current project + the aggregate run status. This is where
@@ -161,7 +163,7 @@ function buildContextMenu(windowManager: WindowManager, state: TrayState | null)
 				})),
 			},
 			{
-				label: `${t(lang, "language")}: ${lang === "zh" ? "中文" : "English"}`,
+				label: `${t(lang, "language")}: ${languageDetails(lang).name}`,
 				click: () => send(windowManager, "toggle-language"),
 			},
 		],

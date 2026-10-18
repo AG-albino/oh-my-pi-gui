@@ -1,3 +1,4 @@
+import { getFormattingLocale } from "../../../lib/i18n";
 import { useTabRpc } from "../../../lib/tab-rpc";
 /**
  * Interactive Marketplaces tab body: add-marketplace form plus per-marketplace
@@ -392,7 +393,7 @@ export function MarketplaceCard({
 	const cacheTimestamp = extractCacheTimestamp(marketplace);
 	const cacheNote =
 		cacheTimestamp !== null
-			? t("marketplace.lastUpdated", { time: new Date(cacheTimestamp).toLocaleString() })
+			? t("marketplace.lastUpdated", { time: new Date(cacheTimestamp).toLocaleString(getFormattingLocale()) })
 			: t("marketplace.cacheNote");
 
 	return (

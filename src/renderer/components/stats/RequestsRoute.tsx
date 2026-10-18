@@ -1,3 +1,4 @@
+import { getFormattingLocale } from "../../lib/i18n";
 /**
  * Requests: paginated table of recent requests with a detail drawer that
  * fetches /api/request/:id on row click.
@@ -52,7 +53,7 @@ function DetailDrawer({ row, onClose }: { row: RequestRow; onClose: () => void }
 			open
 			onClose={onClose}
 			size="lg"
-			title={`${row.model} · ${new Date(row.timestamp).toLocaleString()}`}
+			title={`${row.model} · ${new Date(row.timestamp).toLocaleString(getFormattingLocale())}`}
 			bodyClassName="p-0"
 			panelClassName="ml-auto mr-0"
 		>
@@ -121,7 +122,7 @@ export function RequestsRoute({ range, refreshKey }: { range: StatsRange; refres
 				label: t("stats.col.when"),
 				render: row => (
 					<span className="whitespace-nowrap text-(--omp-muted)">
-						{new Date(row.timestamp).toLocaleString(undefined, {
+						{new Date(row.timestamp).toLocaleString(getFormattingLocale(), {
 							month: "short",
 							day: "numeric",
 							hour: "2-digit",

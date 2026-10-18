@@ -1,3 +1,4 @@
+import { getFormattingLocale } from "../../lib/i18n";
 /**
  * Tools: ranked usage table with error rate and attributed cost, plus a
  * top-tools call-volume bar chart.
@@ -64,7 +65,7 @@ export function ToolsRoute({ range, refreshKey }: { range: StatsRange; refreshKe
 				align: "right",
 				render: row =>
 					row.lastUsed > 0
-						? new Date(row.lastUsed).toLocaleString(undefined, {
+						? new Date(row.lastUsed).toLocaleString(getFormattingLocale(), {
 								month: "short",
 								day: "numeric",
 								hour: "2-digit",
