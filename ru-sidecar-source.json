@@ -1,0 +1,8 @@
+{
+  "repo": "nornzach/oh-my-pi-gui",
+  "tag": "v0.9.22",
+  "asset": "omp-0.9.22-setup.exe",
+  "installerSha256": "f9545ca5c75ae3c796e3c9e61d674cde2885f1a69907731244c6fb72c1946306",
+  "sidecarSha256": "decb1587ea98579b4bc46a3ccfe249859d26385876948fa14c7349443ac7d714",
+  "agentSourceCommit": "8c0ef7e553c87e106ce586b1b4c827fe45718799"
+}

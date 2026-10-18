@@ -106,8 +106,9 @@ deb:
 
 publish:
   provider: github
-  owner: nornzach
+  owner: AG-albino
   repo: oh-my-pi-gui
+  channel: ru
 
 # NO `electronLanguages` here on purpose — see the note in
 # electron-builder.win.yml: exact-basename matching deleted every `locales/*.pak`,

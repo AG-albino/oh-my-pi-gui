@@ -1,0 +1,109 @@
+name: Release Russian Windows build
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing ru tag matching package.json, e.g. v0.9.22-ru.1"
+        required: true
+      publish:
+        description: "Publish verified installers to the ru release channel"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-ru
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: github.repository == 'AG-albino/oh-my-pi-gui'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+      - name: Validate release identity
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: bun -e 'const p=await Bun.file("package.json").json();if(process.env.RELEASE_TAG!==`v${p.version}`||!/^\d+\.\d+\.\d+-ru\.\d+$/.test(p.version))throw Error("Invalid RU version/tag")'
+      - run: bun install --frozen-lockfile
+      - run: bun run check:types
+      - run: bunx vitest run --maxWorkers=2
+      - name: Check formatting and lint of derivative changes
+        shell: bash
+        run: |
+          git fetch --no-tags https://github.com/nornzach/oh-my-pi-gui.git main:refs/remotes/canonical/main
+          mapfile -t files < <(git diff --name-only --diff-filter=ACMR canonical/main...HEAD -- '*.ts' '*.tsx' '*.js' '*.mjs' '*.cjs' '*.json')
+          if [ "${#files[@]}" -gt 0 ]; then bunx biome check "${files[@]}"; fi
+      - run: bun run build
+
+  windows:
+    needs: validate
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+      - run: bun install --frozen-lockfile
+      - name: Verify and extract the pinned official Core
+        shell: pwsh
+        run: ./scripts/prepare-ru-sidecar.ps1
+      - run: bun scripts/check-russian-schema.ts resources/omp.exe
+      - name: Build Windows packages
+        run: bun run package:win -- --publish never
+      - name: Verify packaged UI and language persistence
+        run: node scripts/smoke-russian-gui.ts dist/win-unpacked/omp.exe
+      - name: Verify update channel and Chromium locale files
+        shell: pwsh
+        run: |
+          if (-not (Test-Path -LiteralPath dist/win-unpacked/locales/en-US.pak)) { throw 'Chromium fallback locale missing' }
+          if (-not (Test-Path -LiteralPath dist/win-unpacked/locales/ru.pak)) { throw 'Russian Chromium locale missing' }
+          $feed = Get-Content -LiteralPath dist/win-unpacked/resources/app-update.yml -Raw
+          if ($feed -notmatch 'owner: AG-albino' -or $feed -notmatch 'channel: ru') { throw 'Wrong updater feed' }
+          if (-not (Test-Path -LiteralPath dist/ru.yml)) { throw 'RU update metadata missing' }
+      - name: Verify updater manifest and packaged Core hashes
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: bun scripts/verify-ru-artifacts.ts dist
+      - name: Record installer hashes
+        shell: pwsh
+        run: |
+          Get-ChildItem dist/omp-*-setup.exe,dist/omp-*-portable.exe | ForEach-Object {
+            $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)"
+          } | Set-Content -Encoding utf8 dist/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: omp-russian-windows
+          path: |
+            dist/omp-*-setup.exe
+            dist/omp-*-setup.exe.blockmap
+            dist/omp-*-portable.exe
+            dist/ru.yml
+            dist/SHA256SUMS.txt
+      - name: Publish verified RU release
+        if: inputs.publish
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          gh release create "$RELEASE_TAG" dist/omp-*-setup.exe dist/omp-*-setup.exe.blockmap dist/omp-*-portable.exe dist/ru.yml dist/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" --verify-tag --prerelease --title "omp $RELEASE_TAG — Русский интерфейс" --notes-file docs/localization/ru-release.md

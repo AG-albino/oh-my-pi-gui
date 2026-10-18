@@ -1,3 +1,7 @@
+# RU distribution fork
+
+For `AG-albino/oh-my-pi-gui` on `ru-distribution`, the user-authorized Russian Windows derivative uses the runbook in `docs/localization/ru-distribution.md`. This scoped runbook supersedes the original maintainer release/push instructions below for this derivative only. Push derivative commits/tags/releases exclusively to AG-albino, never to nornzach or can1357. The upstream localization contribution remains a separate `feat/russian-localization` branch and PR.
+
 # GUI Development Rules
 
 This file governs the **omp GUI sub-repository**. Read it before any edit here — the directory layout (a repo nested inside the omp monorepo) is unusual and getting it wrong breaks builds or leaks commits into the wrong remote.

@@ -35,7 +35,7 @@ import {
 const { autoUpdater } = pkg;
 
 const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
-const RELEASE_DOWNLOAD_BASE = "https://github.com/nornzach/oh-my-pi-gui/releases/download/";
+const RELEASE_DOWNLOAD_BASE = "https://github.com/AG-albino/oh-my-pi-gui/releases/download/";
 const PROGRESS_INTERVAL_MS = 100;
 
 /**
@@ -198,6 +198,10 @@ function notesOf(info: { releaseNotes?: unknown }): string | undefined {
 }
 
 export function setupUpdater(): void {
+	// This derivative receives only reviewed releases containing Russian.
+	autoUpdater.allowPrerelease = true;
+	autoUpdater.channel = "ru";
+	autoUpdater.allowDowngrade = false;
 	installMode = detectInstallMode();
 	// Installs interrupted by older builds keyed the partial by process id, which
 	// nothing could ever continue — those orphans are the only debris a startup

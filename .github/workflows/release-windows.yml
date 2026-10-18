@@ -35,6 +35,7 @@ env:
 
 jobs:
   windows:
+    if: github.repository == 'nornzach/oh-my-pi-gui'
     runs-on: windows-latest
     steps:
       - name: Resolve release tag

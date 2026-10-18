@@ -1,0 +1,61 @@
+name: Sync upstream into Russian distribution
+
+on:
+  schedule:
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: sync-upstream-ru
+  cancel-in-progress: false
+
+jobs:
+  propose:
+    if: github.repository == 'AG-albino/oh-my-pi-gui'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ru-distribution
+          fetch-depth: 0
+      - name: Propose new upstream commits for review
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git remote add canonical https://github.com/nornzach/oh-my-pi-gui.git
+          git fetch canonical main
+          if git merge-base --is-ancestor canonical/main HEAD; then
+            echo "Russian distribution already contains the official GUI commits."
+            exit 0
+          fi
+          pending=$(gh pr list --repo "$GITHUB_REPOSITORY" --base ru-distribution --state open --json headRefName --jq '[.[] | select(.headRefName | startswith("sync/upstream-"))] | length')
+          if [ "$pending" != "0" ]; then
+            echo "An upstream synchronization PR is already awaiting review."
+            exit 0
+          fi
+          upstream_sha=$(git rev-parse canonical/main)
+          branch="sync/upstream-${upstream_sha:0:12}"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c "$branch"
+          merged=false
+          if git merge --no-ff --no-edit canonical/main; then
+            git push origin "$branch"
+            merged=true
+          else
+            git merge --abort
+            git push origin "canonical/main:refs/heads/$branch"
+          fi
+          gh pr create --repo "$GITHUB_REPOSITORY" --base ru-distribution --head "$branch" \
+            --title "Review upstream updates for Russian distribution" --body-file docs/localization/upstream-sync-pr.md
+          if [ "$merged" = true ]; then
+            # GITHUB_TOKEN-created PRs do not fire ordinary pull_request CI.
+            # Explicit workflow_dispatch runs the translation guards on this merge.
+            gh workflow run localization.yml --repo "$GITHUB_REPOSITORY" --ref "$branch"
+          fi

@@ -42,8 +42,9 @@ portable:
 
 publish:
   provider: github
-  owner: nornzach
+  owner: AG-albino
   repo: oh-my-pi-gui
+  channel: ru
 
 # NO `electronLanguages` here on purpose: electron-builder's option compares the
 # list against Electron's `locales/*.pak` basenames with an EXACT match (after

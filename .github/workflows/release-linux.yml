@@ -29,6 +29,7 @@ env:
 
 jobs:
   linux:
+    if: github.repository == 'nornzach/oh-my-pi-gui'
     runs-on: ubuntu-latest
     steps:
       - name: Resolve release tag
