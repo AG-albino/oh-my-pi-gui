@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Russian interface localization**: a third interface language joining English and 中文, chosen from an explicit language picker. Covers all renderer strings, settings schema labels, and native menus/tray; technical terms (MCP, model names, tool ids) stay English per `docs/localization/ru.md`. — thanks [@AG-albino](https://github.com/AG-albino) ([#16](https://github.com/nornzach/oh-my-pi-gui/pull/16))
+- PR CI: a `localization` workflow now runs typecheck, the test suite, and a production build on every pull request. — thanks [@AG-albino](https://github.com/AG-albino) ([#16](https://github.com/nornzach/oh-my-pi-gui/pull/16))
+
 ## [0.9.22] - 2026-10-17
 
 ### Added
