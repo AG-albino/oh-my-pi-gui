@@ -577,13 +577,14 @@ function SchemaSettingRow({
 					{error}
 				</p>
 			)}
-			{provenance && (
+			{/* Only worth showing when a non-global layer overrides the value —
+			    "default/unset" and "set globally" add no information the value
+			    itself doesn't already give. */}
+			{provenance?.layers.some(layer => layer !== "global") && (
 				<details className="px-2 pb-2 text-omp-xs text-(--omp-dim)">
 					<summary className="cursor-pointer">
 						{t("settings.source.label")}:{" "}
-						{provenance.layers.length
-							? provenance.layers.map(layer => t(`settings.source.${layer}`)).join(" → ")
-							: t("settings.source.default")}
+						{provenance.layers.map(layer => t(`settings.source.${layer}`)).join(" → ")}
 					</summary>
 					<p className="mt-1">{t("settings.source.saveGlobal")}</p>
 					<code className="block break-words whitespace-pre-wrap">
