@@ -157,8 +157,15 @@ export function ManageSkillRenderer({ args, result, isError, isPartial, partialR
 	const action = text(details?.action) || text(args.action);
 	const name = text(details?.name) || text(args.name);
 	const description = text(details?.description) || text(args.description);
-	const actionKey =
-		action === "create"
+	// Past tense only once the tool actually returned — "Creating" while pending.
+	const pending = effective == null && !isError;
+	const actionKey = pending
+		? action === "create"
+			? "tools.manageSkill.creating"
+			: action === "delete"
+				? "tools.manageSkill.deleting"
+				: "tools.manageSkill.updating"
+		: action === "create"
 			? "tools.manageSkill.created"
 			: action === "delete"
 				? "tools.manageSkill.deleted"
