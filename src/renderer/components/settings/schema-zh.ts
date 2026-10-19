@@ -1553,7 +1553,7 @@ export const ZH_SETTINGS: Record<string, { label: string; description?: string }
 	},
 	"composer.tokenRate": {
 		label: "生成速率显示",
-		description: "在工作行显示平滑的每秒 token 生成速率，并在回合之间保持可见。",
+		description: "在标题栏用量区显示平滑的每秒 token 生成速率，并在回合之间保持可见。",
 	},
 	"display.pinnedAgents": {
 		label: "固定代理列表",

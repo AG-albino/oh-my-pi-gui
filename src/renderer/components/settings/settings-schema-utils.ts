@@ -83,6 +83,19 @@ const TERMINAL_DISPLAY_SETTINGS = new Set([
 	// Rows pushed off a TUI viewport reaching its scrollback — the GUI renders
 	// its own transcript, which has no displaced-rows concept.
 	"tui.completeScrollback",
+	// Vim modal editing needs a terminal text buffer; the DOM composer cannot
+	// host it, so the toggle can never take effect here.
+	"tui.vimMode",
+	// Tags read results text/markdown for the TUI's formatted preview; the GUI
+	// renderer never reads contentType, so the flag changes nothing here.
+	"read.renderMarkdown",
+	// `omp stream` is a CLI subcommand with no RPC surface — its server and
+	// redaction settings can never be exercised from this app.
+	"stream.serverUrl",
+	"stream.redactPatterns",
+	// Only the TUI editor implements cleared-draft recall (Ctrl+C → Up/Down);
+	// the GUI composer keeps its own history and never reads this flag.
+	"composer.recallClearedDrafts",
 ]);
 
 export function isSettingSupportedInGui(entry: { path?: string; tuiOnly?: boolean }): boolean {
