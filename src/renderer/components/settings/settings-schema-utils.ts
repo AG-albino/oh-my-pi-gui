@@ -80,6 +80,9 @@ const TERMINAL_DISPLAY_SETTINGS = new Set([
 	// images and auto-drawn charts) that the GUI does not render.
 	"tui.renderSvg",
 	"tui.autoGraph",
+	// Rows pushed off a TUI viewport reaching its scrollback — the GUI renders
+	// its own transcript, which has no displaced-rows concept.
+	"tui.completeScrollback",
 ]);
 
 export function isSettingSupportedInGui(entry: { path?: string; tuiOnly?: boolean }): boolean {

@@ -1180,4 +1180,10 @@ export const RU_SCHEMA_OPTION_TEXT: Readonly<Record<string, string>> = {
 		"Проверить доступность и запросить подтверждение перед первым использованием сохранённого сброса.",
 	"Classic sweep (default)": "Классический обход (по умолчанию)",
 	"Moon filling cycle": "Цикл заполнения луны",
+	// advisor.continueSeverity / computer.backgroundFallback
+	Nit: "Мелочь",
+	Concern: "Замечание",
+	Blocker: "Блокер",
+	Takeover: "Перехват",
+	Refuse: "Отказать",
 };

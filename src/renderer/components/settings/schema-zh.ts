@@ -1824,4 +1824,35 @@ export const ZH_SETTINGS: Record<string, { label: string; description?: string }
 		label: "陈旧清理保留天数",
 		description: "陈旧清理保留此天数内的条目（默认 30）。",
 	},
+	"advisor.continueSeverity": {
+		label: "顾问唤醒级别",
+		description:
+			"顾问批注在 Agent 已给出最终答复后唤醒它所需的最低级别；低于此级别的批注只作为卡片留在转录末尾，随你的下一条消息送达 Agent。",
+	},
+	"computer.backgroundFallback": {
+		label: "后台输入降级",
+		description:
+			"窗口输入的后台通道不可用时的处理方式：以接管方式重跑并把焦点还给你的应用（macOS；其他平台为普通接管），或拒绝——同时阻止 Agent 自行抢占前台或打开 macOS 菜单。",
+	},
+	"task.structured": {
+		label: "结构化任务结果",
+		description:
+			"在 task 工具上暴露 outputSchema/schemaMode，子代理结果通过 yield 工具返回并按调用方或 agent 的输出 schema 校验。关闭时 task 子代理没有 yield 工具、以纯文本返回最终消息（定义中设 structured: true 的 agent 除外）；eval agent()/workpool 产生的子代理始终返回结构化结果。",
+	},
+	"task.agentSoftRequestBudget": {
+		label: "按 Agent 的软请求预算",
+		description: "按 agent 名覆盖 task.softRequestBudget 的映射；某 agent 的值为 0 时关闭其预算保护。",
+	},
+	"sharpshooter.minPromptLength": {
+		label: "Sharpshooter 最短消息长度",
+		description: "短于此字符数的用户消息跳过 Sharpshooter 提取（默认 16）。",
+	},
+	"gc.compress": {
+		label: "压缩冷会话文件",
+		description: "通过文件系统透明压缩（APFS、NTFS）就地重写冷会话文件；需显式开启。",
+	},
+	"gc.compressAfterDays": {
+		label: "压缩闲置天数",
+		description: "压缩闲置超过此天数的会话文件（默认 7）。",
+	},
 };

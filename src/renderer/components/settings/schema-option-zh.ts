@@ -1005,6 +1005,14 @@ export const ZH_SCHEMA_OPTION_TEXT: Readonly<Record<string, string>> = {
 	"transfer.sh-compatible endpoint": "transfer.sh 兼容端点",
 	// find 工具
 	"Disable the find tool": "禁用 find 工具",
+	// advisor.continueSeverity / computer.backgroundFallback / prewalk.auto / lsp.requestTimeout
+	Nit: "轻微",
+	Concern: "关注",
+	Blocker: "阻塞",
+	Takeover: "接管",
+	Refuse: "拒绝",
+	Suggest: "建议",
+	"20 seconds": "20 秒",
 	"Retry stops with no visible assistant message; tool calls are excluded (default)":
 		"重试没有可见助手消息的停止；不含工具调用（默认）。",
 };
