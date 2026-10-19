@@ -56,7 +56,6 @@ export const en: Record<string, string> = {
 	"titlebar.actions": "Session actions",
 	"settings.restoreUnset": "Remove global override",
 	"titlebar.stats": "Session stats",
-	"titlebar.workspace": "Open workspace",
 	"titlebar.hotkeys": "Keyboard shortcuts",
 	"titlebar.feedback": "Feedback",
 	"titlebar.feedbackHint": "Report a bug or suggest a feature on GitHub",
@@ -70,7 +69,6 @@ export const en: Record<string, string> = {
 	"record.stopHint": "Stop and save the recording",
 	"record.denied": "Screen recording permission denied — enable it for omp in System Settings → Privacy & Security → Screen Recording.",
 	"titlebar.planMode": "Plan mode is on — the agent plans before executing",
-	"titlebar.contextTooltip": "Context window used",
 	"titlebar.usage": "Usage & quotas",
 	"titlebar.providers": "Providers & login",
 	"titlebar.prCenter": "PR Center",
@@ -97,8 +95,6 @@ export const en: Record<string, string> = {
 	"tabs.actions": "Tab actions",
 	// Session tab strip (TabBar)
 	"tabs.strip": "Session tabs",
-	"tabs.new": "New tab",
-	"tabs.newHint": "New tab",
 	"tabs.new.agentHint": "New agent tab (⌘T)",
 	"tabs.new.chatHint": "New chat tab — tool-free conversation (⇧⌘T)",
 	"tabs.new.agent": "New Agent Tab",
@@ -137,7 +133,6 @@ export const en: Record<string, string> = {
 	"worktree.openFailed":
 		"Worktree created at {path}, but the tab could not be opened. Retry opens this existing worktree.",
 	"worktree.retryOpen": "Open created worktree",
-	"thinking.inherit": "Inherited",
 	"worktree.title": "New worktree tab",
 	"worktree.nameLabel": "Name",
 	"worktree.namePlaceholder": "e.g. fix-login",
@@ -239,7 +234,6 @@ export const en: Record<string, string> = {
 	"input.abort": "Abort",
 	"input.steer": "Steer",
 	"input.followUp": "Follow up",
-	"input.queued": "{count} queued message{plural}",
 	"input.dequeueEmpty": "No queued messages to restore",
 	"input.queue.badge": "Queue",
 	"input.queue.title": "Starts with -> / => — sent after the agent yields",
@@ -306,7 +300,6 @@ export const en: Record<string, string> = {
 	"input.modes.vibeDesc": "Hand work to fast persistent workers",
 	"input.modes.rolesDesc": "Pick models for planning, review and more",
 	"input.more.label": "More",
-	"input.more.title": "More coding toggles",
 	"input.modes.title": "Session modes and coding toggles",
 	"input.modes.activeTitle": "Active modes: {modes}",
 	"input.more.autoCompact": "Auto-compact context",
@@ -320,7 +313,6 @@ export const en: Record<string, string> = {
 	"workspaces.current": "Current",
 	"workspaces.sessionCount": "{count} sessions",
 	"workspaces.switchFailed": "Couldn't switch workspace",
-	"input.context": "Context",
 	"input.contextTooltip": "Context: {percent}% used",
 	"contextUsage.open": "Show context usage, {percent}% used",
 	"contextUsage.ofWindow": "{percent}% of {window}",
@@ -337,7 +329,6 @@ export const en: Record<string, string> = {
 	"contextUsage.category.messages": "Conversation messages",
 
 	// Sidebar
-	"sidebar.sessions": "Sessions",
 	"sidebar.newSession": "New session",
 	"sidebar.search": "Search sessions",
 	"sidebar.mode.aria": "Choose workspace mode",
@@ -348,7 +339,6 @@ export const en: Record<string, string> = {
 	"sidebar.newCode": "New task",
 	"sidebar.newWork": "New work task",
 	"sidebar.quickChat": "Quick chat",
-	"sidebar.navigation.collapse": "Hide more navigation",
 	"sidebar.navigation.expand": "Show more navigation",
 	"contextStrategy.title": "Context strategy — what happens when this model's context fills",
 	"contextStrategy.strategyLabel": "Strategy",
@@ -418,11 +408,6 @@ export const en: Record<string, string> = {
 	"sidebar.navigation.capabilities": "OMP capabilities",
 	"sidebar.emptyCode": "No code sessions yet",
 	"sidebar.emptyWork": "No work tasks yet",
-	"sidebar.local": "Local",
-	"sidebar.global": "Global",
-	"sidebar.files": "Files",
-	"sidebar.logs": "Logs",
-	"sidebar.stats": "Stats",
 	"sidebar.delete": "Delete session",
 	"sidebar.deleteConfirm": "Delete this session permanently?",
 	"modelRestore.title": "Session model unavailable",
@@ -436,34 +421,21 @@ export const en: Record<string, string> = {
 	"sidebar.openFailed": "Could not open session",
 	"sidebar.openInNewWindow": "Open in new window",
 	"sidebar.newWindowFailed": "Could not open a new window",
-	"sidebar.newFailed": "Could not start session",
 	"sidebar.deleteFailed": "Could not delete session",
-	"sidebar.abortHint": "Abort the active turn before starting a new session",
 	"sidebar.recent": "Recent",
 	"sidebar.chats": "Chats",
 	"sidebar.rename": "Rename session",
 	"sidebar.renameFailed": "Rename failed",
-	"sidebar.deleteGroup": "Delete all {count} sessions in this workspace",
 	"sidebar.deleteGroupConfirm": "Delete workspace sessions?",
 	"sidebar.deleteGroupMessage": 'Delete the workspace "{name}" and all {count} of its sessions from the list.',
 	"sidebar.deleteGroupWarning": "This permanently deletes the session files. It cannot be undone.",
 	"sidebar.loading": "Loading sessions…",
 	"sidebar.loadFailed": "Could not load your sessions.",
 	"sidebar.stale": "Showing the sessions that last loaded.",
-	"sidebar.noMatch": "No matching sessions",
-	"sidebar.empty": "No saved sessions",
-	"sidebar.emptyHint": "Your conversations for this project will appear here.",
 	"sidebar.untitled": "Untitled",
-	"sidebar.thisSession": "this session",
-	"sidebar.messageCount": "{count} message{plural}",
-	"sidebar.activeCannotDelete": "The active session cannot be deleted",
-	"sidebar.fileTree": "File tree",
 	"sidebar.deleteMessage": "Delete {name}? This permanently removes its transcript and cannot be undone.",
 	"sidebar.openCancelled": "Session switch was cancelled by an extension.",
-	"sidebar.menu.newAgent": "New agent session",
-	"sidebar.menu.newChat": "New chat session",
 	"sidebar.menu.newAgentHere": "New agent session here",
-	"sidebar.menu.newChatHere": "New chat session here",
 	"sidebar.menu.newWorktreeHere": "New worktree tab here",
 	"sidebar.menu.rename": "Rename",
 	"sidebar.menu.pin": "Pin to top",
@@ -478,8 +450,6 @@ export const en: Record<string, string> = {
 	"sidebar.kindMismatch":
 		"Cannot switch between agent and chat sessions. Open the target session in a new tab instead.",
 	"sidebar.openedInNewTab": "Opened in a new tab — agent and chat sessions stay separate.",
-	"sidebar.deleteGroupActive":
-		"This workspace contains the active session — switch to another session before deleting it.",
 	"sidebar.deleteGroupStreaming": "Abort the active turn before deleting workspace sessions",
 	"sidebar.signal.running": "Running",
 	"sidebar.signal.waiting": "Waiting for confirmation or approval",
@@ -841,9 +811,6 @@ export const en: Record<string, string> = {
 	// Unavailable reason
 	"unavailable.chatSession": "Needs an agent session — chat sessions run without tools",
 	"unavailable.tuiOnly": "TUI-only — not yet available via RPC",
-	"unavailable.tuiOnlyShort": "TUI-only",
-
-	// Usage window
 	"usage.title": "Usage",
 	"usage.providerQuotas": "Provider quotas",
 	"usage.sessionTallies": "Session tallies",
@@ -1019,7 +986,6 @@ export const en: Record<string, string> = {
 	"stats.projects": "Projects",
 	"stats.requests": "Requests",
 	"stats.sync": "Sync",
-	"stats.syncing": "Syncing…",
 	"stats.syncDone": "Stats synced",
 	"stats.syncFailed": "Sync failed",
 
@@ -1145,7 +1111,6 @@ export const en: Record<string, string> = {
 
 	// Common
 	"common.loading": "Loading…",
-	"common.error": "Error",
 	"rpc.failed": "Request failed",
 	"common.close": "Close",
 	"toast.repeated": "Repeated {count} times",
@@ -1154,7 +1119,6 @@ export const en: Record<string, string> = {
 	"common.save": "Save",
 	"common.yes": "yes",
 	"common.no": "no",
-	"common.language": "Language",
 	"common.delete": "Delete",
 	"common.edit": "Edit",
 	"common.retry": "Retry",
@@ -1211,9 +1175,6 @@ export const en: Record<string, string> = {
 	"extPanel.commands.source.mcp_prompt": "MCP prompt",
 	"extPanel.commands.source.other": "other",
 	"extPanel.commands.source.skill": "skill",
-	"extPanel.readonlyNote": "Read-only view. Enable/disable controls land in a future wave alongside the set_* RPCs.",
-
-	// Modes panel (Vibe / Goal / Loop session modes)
 	"modesPanel.title": "Modes",
 	"modesPanel.tabs.vibe": "Vibe",
 	"modesPanel.tabs.goal": "Goal",
@@ -1274,7 +1235,6 @@ export const en: Record<string, string> = {
 	"modesPanel.loop.state.paused": "paused",
 
 	// Fork command (whole-session clone via the fork RPC)
-	"fork.failed": "Fork failed",
 	"fork.success": "Session forked",
 	"fork.cancelled": "Fork cancelled by a session hook.",
 
@@ -1324,7 +1284,6 @@ export const en: Record<string, string> = {
 	"sessionTree.head": "head",
 	"sessionTree.branchAria": "Branch from this message",
 	"sessionTree.branchFromHere": "Branch from here",
-	"sessionTree.branchFromLatest": "Branch from the latest message (drops its reply)",
 	"sessionTree.root": "session start",
 	"sessionTree.untitled": "Untitled session",
 	"sessionTree.messageCount": "{count} message{plural}",
@@ -1360,7 +1319,6 @@ export const en: Record<string, string> = {
 	"import.import": "Import",
 	"import.importN": "Import {count}",
 	"import.imported": "Imported {count} sessions",
-	"import.failed": "Import failed",
 	"import.notConnected": "Sidecar not connected",
 	"import.sourceUnavailable": "Cannot read {source} sessions",
 
@@ -1492,8 +1450,6 @@ export const en: Record<string, string> = {
 	"providerCfg.form.apiKeyRemovingHint":
 		"Saving deletes the key from models.yml. Requests fail until a new one is set.",
 	"providerCfg.form.models": "Models",
-	"providerCfg.form.modelId": "model-id",
-	"providerCfg.form.modelName": "Display name (optional)",
 	"providerCfg.form.modelAdd": "Add model",
 	"providerCfg.form.modelRemove": "Remove model",
 	"providerCfg.form.modelsRequired": "Add at least one model",
@@ -1514,7 +1470,6 @@ export const en: Record<string, string> = {
 	"providerCfg.form.authHeader": "Send key in Authorization header",
 	"providerCfg.form.authHeaderHint": "Enable if the provider expects Bearer auth instead of its default key field.",
 	"providerCfg.form.discovery": "Model discovery",
-	"providerCfg.form.discoveryType": "Discovery type",
 	"providerCfg.form.discoveryNone": "Do not fetch (manual models only)",
 	"providerCfg.form.discoveryTimeout": "Timeout (ms)",
 	"providerCfg.form.discoveryHint":
@@ -1523,8 +1478,6 @@ export const en: Record<string, string> = {
 	"providerCfg.form.disableStrictToolsHint":
 		"Some providers reject strict JSON Schema; enable this to send permissive schemas.",
 	"providerCfg.form.transport": "Transport override",
-	"providerCfg.form.transportHint":
-		"Route all models through the auth-gateway's /v1/pi/stream endpoint (requires gateway baseUrl + bearer).",
 	"providerCfg.form.extraBody": "Extra request parameters (JSON)",
 	"providerCfg.form.extraBodyPlaceholder": '{"temperature": 0.7}',
 	"providerCfg.form.extraBodyHint": "Additional JSON merged into every request body (compat.extraBody).",
@@ -1663,15 +1616,10 @@ export const en: Record<string, string> = {
 	"settings.capabilities.enabled": "Enabled",
 	"settings.capabilities.disabled": "Off",
 	"settings.capabilities.loading": "Loading…",
-	"settings.capabilities.enable": "Enable",
-	"settings.capabilities.disable": "Disable",
 	"settings.capabilities.ttsr": "Mid-stream correction · TTSR",
 	"settings.capabilities.ttsrDesc":
 		"When output matches a rule, OMP interrupts generation, injects the relevant guidance, and continues from the same turn—without permanently bloating the prompt.",
 	"settings.capabilities.configureRules": "Configure rules",
-	"settings.capabilities.ttsrRestarting": "TTSR saved — restarting the agent and restoring this session…",
-	"settings.capabilities.ttsrRestartPending":
-		"TTSR saved — it will take effect after the next agent restart because this session is busy.",
 	"settings.capabilities.agents": "Parallel subagents",
 	"settings.capabilities.agentsDesc":
 		"Fan independent work out to isolated agents, collect structured results, and let sibling tasks coordinate through the hub.",
@@ -1684,8 +1632,6 @@ export const en: Record<string, string> = {
 	"settings.capabilities.advisorDesc":
 		"Have an independent model review the primary agent's work each turn and return inline guidance or a blocking correction.",
 	"settings.capabilities.configureAdvisor": "Advisor settings",
-	"settings.capabilities.advisorNoModel":
-		"Advisor is enabled, but no advisor model could be resolved. Configure the Advisor model role.",
 	"settings.capabilities.advisorInactive": "Enabled, not running",
 	"settings.capabilities.modes": "Goal & loop modes",
 	"settings.capabilities.modesDesc":
@@ -1752,12 +1698,6 @@ export const en: Record<string, string> = {
 	"settings.restartRequired.badge": "Restart",
 	"settings.restartRequired.hint":
 		"Cached at session startup — edits take effect after restarting the session (in every client).",
-	"updater.section": "App updates",
-	"updater.currentVersion": "Current version {version}",
-	"updater.check": "Check for updates",
-	"updater.checking": "Checking for updates…",
-	"updater.notAvailable": "You're up to date",
-	"updater.checkFailed": "Update check failed",
 	"updater.available": "Version {version} is available",
 	"updater.download": "Download update",
 	"updater.downloadInstaller": "Download installer",
@@ -1790,10 +1730,6 @@ export const en: Record<string, string> = {
 	"settings.editors.approval.allow": "Allow",
 	"settings.editors.approval.prompt": "Prompt",
 	"settings.editors.approval.deny": "Deny",
-	"settings.editors.reveal": "Reveal",
-	"settings.editors.hide": "Hide",
-	"settings.editors.reset": "Reset",
-	"settings.editors.apply": "Apply",
 	"settings.editors.errNumber": "Enter a valid number",
 	"settings.editors.errJsonArray": "Expected a JSON array",
 	"settings.editors.errJsonObject": "Expected a JSON object",
@@ -1844,7 +1780,6 @@ export const en: Record<string, string> = {
 	"approval.tier.read": "read",
 	"approval.tier.write": "write",
 	"approval.tier.exec": "exec",
-	"approval.elided": "[…{count} chars elided…]",
 	"approval.noArgs": "No arguments to preview.",
 	"approval.waiting": "The agent waits until you decide.",
 	"approval.deny": "Deny",
@@ -1976,10 +1911,6 @@ export const en: Record<string, string> = {
 	"todoCmd.importReadFailed": "Could not read the selected file",
 
 	// /ssh (no native surface yet)
-	"ssh.noSurface":
-		"No native SSH hosts panel in the GUI yet — hosts live in ssh.json capability files; manage them from the TUI or CLI",
-
-	// Context report dialog (/context)
 	"contextReport.title": "Context Report",
 	"contextReport.loading": "Loading context report…",
 	"contextReport.error": "Failed to load context report",
@@ -2011,7 +1942,6 @@ export const en: Record<string, string> = {
 
 	// Share session dialog (/share)
 	"shareDialog.title": "Share Session",
-	"shareDialog.sharing": "Creating encrypted share link…",
 	"shareDialog.error": "Failed to share session",
 	"shareDialog.url": "Share URL",
 	"shareDialog.copy": "Copy link",
@@ -2034,7 +1964,6 @@ export const en: Record<string, string> = {
 	"jobs.emptyHint":
 		"Background jobs run async tools — long bash commands, debuggers, task subagents. They appear here while alive and for ~5 minutes after.",
 	"jobs.running": "Running",
-	"jobs.recent": "Recent",
 	"jobs.tree": "This agent and its subagents",
 	"jobs.runningCount": "{count} running",
 	"jobs.subagent": "subagent",
@@ -2211,7 +2140,6 @@ export const en: Record<string, string> = {
 	"modelPicker.notConnected": "Sidecar not connected",
 	"modelPicker.notRespondingHint": "The agent process may not be responding.",
 	"modelPicker.stillNotResponding": "Still not responding. Try restarting the agent.",
-	"modelPicker.stillNotRespondingShort": "Still not responding.",
 	"modelPicker.retry": "Retry",
 	"modelPicker.loading": "Loading models…",
 	"modelPicker.empty": "No models are available.",
@@ -2391,7 +2319,6 @@ export const en: Record<string, string> = {
 	"stats.requests.rowHint": "Click a row for details",
 	"stats.requests.prev": "Prev",
 	"stats.requests.next": "Next",
-	"stats.requests.closeDetails": "Close details",
 	"stats.requests.payload": "Payload",
 	"stats.requests.loadingDetail": "Loading request details…",
 	"stats.requests.emptyPayload": "(empty)",
@@ -2403,14 +2330,6 @@ export const en: Record<string, string> = {
 	"stats.requests.detail.cacheWrite": "Cache write",
 
 	// Stats popover (per-session card)
-	"statsPop.title": "Session stats",
-	"statsPop.messages": "Messages",
-	"statsPop.userTurns": "User turns",
-	"statsPop.toolCalls": "Tool calls",
-	"statsPop.tokens": "Tokens",
-	"statsPop.cost": "Cost",
-
-	// Chat stream / message chrome
 	"chat.copyCode": "Copy code",
 	"chat.renderingDiagram": "Rendering diagram…",
 	"chat.diagram": "Diagram",
@@ -2471,10 +2390,6 @@ export const en: Record<string, string> = {
 	"chat.context.compactionMethod.snapcompact": "Snap-compacted",
 	"chat.context.compactionMethod.shake": "Shaken",
 	"chat.compaction.showEarlier": "Show {count} earlier messages",
-	"chat.process.summary": "Process · {count} step{plural}",
-	"chat.process.running": "Working · {count} step{plural}",
-	"chat.process.reasoning": "reasoning",
-	"chat.process.failed": "{count} failed",
 	"chat.context.compactedFrom": "Context compacted from {tokens} tokens",
 	"chat.context.branchSummary": "Branch summary",
 	"chat.context.referencedFiles": "Referenced files",
@@ -2501,8 +2416,6 @@ export const en: Record<string, string> = {
 	"chat.custom.ircAuto": "auto",
 	"chat.custom.ircReply": "reply",
 	"chat.thinking.live": "Thinking…",
-	"chat.thinking.collapsed": "(collapsed)",
-	"chat.thinking.expanded": "(expanded)",
 	"chat.thinking.show": "Show reasoning",
 	"chat.thinking.hide": "Hide reasoning",
 	"chat.awaitingModel": "Waiting for the model",
@@ -2583,12 +2496,6 @@ export const en: Record<string, string> = {
 	"hotkeys.row.hotkeys": "This shortcuts panel",
 	"hotkeys.row.modelPicker": "Model picker",
 	"hotkeys.row.agentHub": "Agent hub",
-	"hotkeys.row.windowToggle": "Show / hide the app window (works system-wide)",
-	"hotkeys.row.newSession": "New session",
-	"hotkeys.row.exportHtml": "Export session as HTML",
-	"hotkeys.row.newWindow": "New window",
-	"hotkeys.row.windowClose": "Close window",
-	"hotkeys.row.findInPage": "Find in the browser page",
 	"hotkeys.remap.rebind": "Rebind",
 	"hotkeys.remap.reset": "Reset to default",
 	"hotkeys.remap.resetAll": "Reset all",
@@ -2806,9 +2713,7 @@ export const en: Record<string, string> = {
 	"tools.task.noResults": "No results",
 
 	// Todo panel
-	"todoPanel.open": "{count} open",
 	"todoPanel.empty": "No todos yet.",
-	"todoPanel.emptyHint": "The agent's todo tool will populate this panel.",
 	"todoPanel.status.pending": "pending",
 	"todoPanel.status.inProgress": "in progress",
 	"todoPanel.status.completed": "completed",
@@ -2845,7 +2750,6 @@ export const en: Record<string, string> = {
 	"filesPanel.refresh": "Refresh file tree",
 	"filesPanel.scanning": "Scanning workspace…",
 	"filesPanel.unavailable": "Workspace listing unavailable.",
-	"filesPanel.unavailableHint": "Requires a connected sidecar with bash access.",
 	"filesPanel.retry": "Retry",
 	"filesPanel.empty": "No files found in the workspace.",
 	"filesPanel.readFailed": "Failed to read: {error}",
@@ -3015,7 +2919,6 @@ export const en: Record<string, string> = {
 	"diffPanel.split": "Split view",
 	"diffPanel.empty": "No edits yet.",
 	"diffPanel.emptyHint": "Diffs from edit / apply_patch / write appear here.",
-	"diffPanel.selectFile": "Select edited file",
 	"diffPanel.summary": "{edits} edit{editPlural} · {files} file{filePlural}",
 	"diffPanel.activity": "{edits} edit{plural} · +{adds} -{removes} · {start} – {end}",
 	"diffPanel.error": "error",
@@ -3231,8 +3134,6 @@ export const en: Record<string, string> = {
 	"mcp.card.auth.expired": "auth expired",
 	"mcp.card.auth.required": "auth required",
 	"mcp.card.removeUnavailable": "Discovered servers have no writable config to remove.",
-	"mcp.card.expand": "Show details",
-	"mcp.card.collapse": "Hide details",
 	"mcp.card.copy": "Copy",
 	"mcp.card.copied": "Copied",
 	"mcp.action.test": "Test connection",
@@ -3349,21 +3250,13 @@ export const en: Record<string, string> = {
 	"ssh.validation.required": "Alias and host are required.",
 	"updates.title": "Updates",
 	"updates.subtitle": "Keep the desktop application and its bundled OMP Core aligned.",
-	"updates.summary.title": "OMP & GUI updates",
-	"updates.summary.delivery": "Core updates are delivered with the desktop app",
 	"updates.gui.name": "GUI application",
-	"updates.gui.what": "Desktop app update",
 	"updates.gui.description": "Electron shell, renderer, and bundled resources.",
 	"updates.core.name": "OMP Core",
-	"updates.core.what": "Agent and runtime (may restart after the current run)",
 	"updates.core.description": "The signed agent sidecar bundled inside the desktop application.",
 	"updates.core.checkFailed": "Could not check the OMP Core version.",
 	"updates.current": "Current",
 	"updates.latest": "Latest",
-	"updates.channel": "Channel",
-	"updates.what": "What this updates",
-	"updates.channel.stable": "Stable",
-	"updates.channel.bundled": "Bundled",
 	"updates.systemHealthy": "OMP system is up to date",
 	"updates.systemAttention": "An update is available",
 	"updates.systemChecking": "Checking OMP system versions",
@@ -3377,7 +3270,6 @@ export const en: Record<string, string> = {
 
 	// Cross-surface text completed by the GUI i18n audit
 	"app.actionFailed": "Action failed",
-	"app.handoffCreated": "Handoff created in a new session.",
 	"command.compactedTitle": "Compacted",
 	"command.compactedMessage": "Context compacted successfully",
 	"common.apply": "Apply",
@@ -3385,7 +3277,6 @@ export const en: Record<string, string> = {
 	"common.hide": "Hide",
 	"common.hideValue": "Hide value",
 	"common.none": "None",
-	"common.noneParenthesized": "(none)",
 	"common.reset": "Reset",
 	"common.reveal": "Reveal",
 	"common.revealValue": "Reveal value",
