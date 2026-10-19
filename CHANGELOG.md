@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.9.23] - 2026-10-19
+
 ### Added
 
 - **Russian interface localization**: a third interface language joining English and 中文, chosen from an explicit language picker. Covers all renderer strings, settings schema labels, and native menus/tray; technical terms (MCP, model names, tool ids) stay English per `docs/localization/ru.md`. — thanks [@AG-albino](https://github.com/AG-albino) ([#16](https://github.com/nornzach/oh-my-pi-gui/pull/16))
@@ -15,6 +17,19 @@
 - **Advisor badge**: a status eye next to the model chip shows when the advisor is watching (and when it has yielded), with live cost in the title bar.
 - **Dedicated tool cards** for `checkpoint`, `rewind`, `context_notes`, `new_context`, `learn`, `manage_skill`, `security_scan` and `ida` replace the generic key/value dump.
 - Extensions that open their own interactive screens now work in the app: they run in a terminal overlay instead of silently doing nothing.
+
+### Changed
+
+- Bundled agent rebuilt from upstream through **v18.12.2** (monorepo `72ca21f9`): paged file reads keep content at the spill threshold, resumed edits reject column-cut lines, native web reads keep collapsed sections, finalized reasoning survives providers that stream no deltas, and image/video chips render with proper emoji glyphs.
+- The config-source disclosure under each setting now appears only when a project/launch/runtime layer actually overrides the value — "default" and "set globally" no longer repeat under every row.
+- Chinese copy audit: agent terminology unified to 代理 across the interface, a mistranslated sidebar button ("New task" was "新对话"), full-width punctuation, and 96 unused locale keys removed.
+
+### Fixed
+
+- Stopping a window recording no longer hangs when the capture already ended, and a denied screen-recording permission explains where to enable it instead of showing a raw DOMException.
+- `/wt` can create a worktree on the default branch with no arguments — previously the palette forced a branch prompt the terminal doesn't require.
+- The `manage_skill` tool card no longer announces a created/updated/deleted skill while the operation is still running.
+- Settings that can never take effect in the app no longer appear: Vim editing mode, Markdown read previews, stream server/redaction, and cleared-draft recall.
 
 ## [0.9.22] - 2026-10-17
 
