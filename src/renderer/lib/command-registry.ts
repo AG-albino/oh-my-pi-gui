@@ -66,7 +66,7 @@ import { addWorkspaceDirectory, moveSessionTo, pickWorkspaceDirectory } from "./
  */
 export type CommandAffordance =
 	| { kind: "action"; run: (args?: string) => unknown; status?: string; argUsage?: string }
-	| { kind: "toggle"; get: () => boolean; set: (enabled: boolean) => unknown }
+	| { kind: "toggle"; get: () => boolean; set: (enabled: boolean) => unknown; status?: string }
 	| { kind: "picker"; open: () => void }
 	| { kind: "window"; open: () => void }
 	| { kind: "submenu"; items: CommandMenuItem[] }
@@ -1456,7 +1456,10 @@ export function buildCommandMenu(ctx: CommandRegistryContext): CommandMenuItem[]
 		description: t("cmd.wt.desc"),
 		category: "workspace",
 		aliases: ["worktree"],
-		affordance: p("/wt ", "[<branch>]"),
+		affordance: {
+			kind: "submenu",
+			items: [sub("wt default", "/wt"), sub("wt branch", "/wt ", "[<branch>]")],
+		},
 	});
 
 	// ═══════════════════════════════════════════════════════════════════

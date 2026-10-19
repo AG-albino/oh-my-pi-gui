@@ -43,15 +43,17 @@ async function finish(save: boolean): Promise<void> {
 	stream = null;
 	setRecording(false);
 	if (!rec) return;
-	const stopped = new Promise<void>(resolve => {
-		rec.addEventListener("stop", () => resolve(), { once: true });
-	});
-	try {
-		if (rec.state !== "inactive") rec.stop();
-	} catch {
-		// Already stopping.
+	if (rec.state !== "inactive") {
+		const stopped = new Promise<void>(resolve => {
+			rec.addEventListener("stop", () => resolve(), { once: true });
+		});
+		try {
+			rec.stop();
+		} catch {
+			// Already stopping — the event still follows.
+		}
+		await stopped;
 	}
-	await stopped;
 	for (const track of media?.getTracks() ?? []) track.stop();
 	if (!save) return;
 	const blob = new Blob(chunks, { type: "video/webm" });
@@ -107,10 +109,14 @@ export async function toggleRecording(): Promise<void> {
 	try {
 		await startRecording();
 	} catch (cause) {
+		const raw = cause instanceof Error ? cause.message : String(cause);
+		// macOS screen-recording permission denials arrive as NotAllowedError —
+		// the fix lives in System Settings, not in the app.
+		const denied = /NotAllowed|denied|permission/i.test(raw);
 		toast({
 			variant: "error",
 			title: translate("record.title"),
-			message: cause instanceof Error ? cause.message : String(cause),
+			message: denied ? translate("record.denied") : raw,
 		});
 	}
 }
