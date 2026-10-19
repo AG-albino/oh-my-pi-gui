@@ -79,7 +79,17 @@ async function finish(save: boolean): Promise<void> {
 /** Start capturing this window. Throws when the platform capture is denied. */
 export async function startRecording(): Promise<void> {
 	if (recorder) return;
-	const media = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 15 } }, audio: false });
+	let media: MediaStream;
+	try {
+		media = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 15 } }, audio: false });
+	} catch (cause) {
+		// macOS screen-recording denials surface as AbortError/NotAllowedError —
+		// the fix lives in System Settings, not in the app. Normalize here so
+		// every caller (palette toggle, REC chip, /record) gets the hint.
+		const name = cause instanceof Error ? cause.name : "";
+		if (/NotAllowed|AbortError|denied|permission/i.test(name)) throw new Error(translate("record.denied"));
+		throw cause;
+	}
 	const rec = new MediaRecorder(media, { mimeType: "video/webm" });
 	chunks = [];
 	rec.addEventListener("dataavailable", event => {
@@ -109,14 +119,10 @@ export async function toggleRecording(): Promise<void> {
 	try {
 		await startRecording();
 	} catch (cause) {
-		const raw = cause instanceof Error ? cause.message : String(cause);
-		// macOS screen-recording permission denials arrive as NotAllowedError —
-		// the fix lives in System Settings, not in the app.
-		const denied = /NotAllowed|denied|permission/i.test(raw);
 		toast({
 			variant: "error",
 			title: translate("record.title"),
-			message: denied ? translate("record.denied") : raw,
+			message: cause instanceof Error ? cause.message : String(cause),
 		});
 	}
 }
