@@ -5,6 +5,7 @@ import { useSessionStore } from "../stores/session";
 import { useTabsStore } from "../stores/tabs";
 import {
 	abortActiveTurn,
+	editFromMessage,
 	forkSessionFromEntryInNewTab,
 	forkSessionFromMessageInNewTab,
 	restoreQueuedMessages,
@@ -15,6 +16,7 @@ interface FillComposerDetail {
 	text?: string;
 	images?: unknown[];
 	prepend?: boolean;
+	tabId?: string;
 }
 
 interface SessionTreeResponse {
@@ -235,6 +237,58 @@ describe("forkSessionFromEntryInNewTab", () => {
 
 		expect(await branch).toBe("saved");
 		expect(openTab).not.toHaveBeenCalled();
+	});
+});
+
+describe("editFromMessage", () => {
+	it("branches the bubble's own tab before the message and refills that tab's composer", async () => {
+		const harness = installWindow([]);
+		const branch = vi.fn(async (_entryId: string) => ({
+			type: "response" as const,
+			command: "branch",
+			success: true as const,
+			data: { text: "original prompt", cancelled: false },
+		}));
+		const getSessionTree = vi.fn();
+		const result = await editFromMessage(
+			{ role: "user", content: "original prompt", timestamp: 1, entryId: "user-entry" },
+			{ branch, getSessionTree },
+			"pane-tab",
+		);
+		expect(result).toBe("branched");
+		expect(getSessionTree).not.toHaveBeenCalled();
+		expect(branch).toHaveBeenCalledWith("user-entry");
+		expect(harness.fillDetail()).toEqual({ text: "original prompt", tabId: "pane-tab" });
+	});
+
+	it("reports a cancelled branch without touching the composer", async () => {
+		const harness = installWindow([]);
+		const branch = vi.fn(async (_entryId: string) => ({
+			type: "response" as const,
+			command: "branch",
+			success: true as const,
+			data: { text: "", cancelled: true },
+		}));
+		const result = await editFromMessage(
+			{ role: "user", content: "x", timestamp: 1, entryId: "user-entry" },
+			{ branch, getSessionTree: vi.fn() },
+			"pane-tab",
+		);
+		expect(result).toBe("cancelled");
+		expect(harness.fillDetail()).toBeUndefined();
+	});
+
+	it("surfaces a refused branch", async () => {
+		installWindow([]);
+		const branch = vi.fn(async (_entryId: string) => ({
+			type: "response" as const,
+			command: "branch",
+			success: false as const,
+			error: "Agent is busy",
+		}));
+		await expect(
+			editFromMessage({ role: "user", content: "x", timestamp: 1, entryId: "e" }, { branch, getSessionTree: vi.fn() }),
+		).rejects.toThrow("Agent is busy");
 	});
 });
 

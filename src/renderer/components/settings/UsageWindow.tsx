@@ -10,15 +10,23 @@ import { useTabRpc } from "../../lib/tab-rpc";
  * titlebar chips do.
  */
 
-import { Coins, Database, RefreshCw, Zap } from "lucide-react";
+import { Coins, Database, History, RefreshCw, Zap } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { SessionStats, UsageLimit, UsageReport, UsageSessionStats } from "../../../shared/rpc-types";
+import type {
+	RpcResetCreditAccount,
+	RpcResetCreditRedeemResult,
+	SessionStats,
+	UsageLimit,
+	UsageReport,
+	UsageSessionStats,
+} from "../../../shared/rpc-types";
 import { formatCost, formatDuration, formatTokens } from "../../lib/format";
 import { useT } from "../../lib/i18n";
 import { useNowTick } from "../../lib/now-tick";
 import { useMessagesStore } from "../../stores/messages";
 import { type SessionStore, useSessionStore } from "../../stores/session";
 import { sessionRuntimeStore, useRuntimeTabId } from "../../stores/session-runtime-context";
+import { toast } from "../../stores/toast";
 import { useUiStore } from "../../stores/ui";
 import { Badge, Button, Modal, ProgressBar, Spinner } from "../common";
 
@@ -128,6 +136,44 @@ function ProviderReportCard({
 	);
 }
 
+/** One redeemable-reset account row in the usage window's reset picker. */
+function ResetCreditRow({
+	account,
+	t,
+	now,
+	busy,
+	onRedeem,
+}: {
+	account: RpcResetCreditAccount;
+	t: (k: string, p?: Record<string, string | number>) => string;
+	now: number;
+	busy: boolean;
+	onRedeem: () => void;
+}) {
+	const expiresMs = account.expiresAt ? Date.parse(account.expiresAt) - now : Number.NaN;
+	const expires = Number.isFinite(expiresMs) && expiresMs > 0 ? formatDuration(expiresMs) : null;
+	const redeemable = account.redeemableCount > 0;
+	return (
+		<div className="flex items-center justify-between gap-2 py-1.5">
+			<div className="flex min-w-0 flex-col">
+				<span className="truncate text-omp-md font-medium text-[var(--omp-text)]">
+					{account.providerLabel} · {account.label}
+					{account.active && <Badge variant="muted">{t("usage.resetActive")}</Badge>}
+				</span>
+				<span className="text-omp-xs text-[var(--omp-dim)]">
+					{account.unavailableReason ??
+						account.error ??
+						t("usage.resetCounts", { redeemable: account.redeemableCount, available: account.availableCount })}
+					{expires ? ` · ${t("usage.resetExpires", { time: expires })}` : ""}
+				</span>
+			</div>
+			<Button size="sm" variant="secondary" disabled={!redeemable || busy} loading={busy} onClick={onRedeem}>
+				{t("usage.redeem")}
+			</Button>
+		</div>
+	);
+}
+
 /** Project the local journal stats onto the tallies block. `history` covers the
  * whole journal (pre-compaction and sibling branches included), which is what
  * the usage window has always reported; without it the live-context figures are
@@ -175,6 +221,10 @@ export function UsageWindow() {
 	const [session, setSession] = useState<UsageSessionStats | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
+	const [resets, setResets] = useState<RpcResetCreditAccount[] | null>(null);
+	const [resetsOpen, setResetsOpen] = useState(false);
+	const [resetsLoading, setResetsLoading] = useState(false);
+	const [redeemingKey, setRedeemingKey] = useState<string | null>(null);
 	const now = useNowTick(open);
 
 	/** The tab/session a quota read was issued for. A late response from a tab
@@ -203,6 +253,60 @@ export function UsageWindow() {
 			if (quotaOwnerRef.current === owner) setLoading(false);
 		}
 	}, [sidecarReady, t, tabId, sessionId, tabRpc.getUsage]);
+
+	/** Banked usage resets across provider accounts (TUI /usage reset selector). */
+	const loadResets = useCallback(async () => {
+		if (!sidecarReady) return;
+		setResetsLoading(true);
+		try {
+			const res = await tabRpc.command({ type: "list_reset_credits" });
+			if (res.success) {
+				setResets((res.data as { accounts?: RpcResetCreditAccount[] } | undefined)?.accounts ?? []);
+			} else {
+				toast({ variant: "error", title: t("usage.redeemReset"), message: res.error });
+			}
+		} catch (cause) {
+			toast({ variant: "error", title: t("usage.redeemReset"), message: String(cause) });
+		} finally {
+			setResetsLoading(false);
+		}
+	}, [sidecarReady, tabRpc, t]);
+
+	/** Spend one banked reset on an account, then re-read quotas and credits. */
+	const redeemReset = useCallback(
+		async (account: RpcResetCreditAccount) => {
+			if (!window.confirm(t("usage.redeemConfirm", { account: `${account.providerLabel} · ${account.label}` }))) {
+				return;
+			}
+			setRedeemingKey(`${account.provider}:${account.target.credentialId}`);
+			try {
+				const res = await tabRpc.command({
+					type: "redeem_reset_credit",
+					target: account.target,
+					label: account.label,
+				});
+				if (!res.success) {
+					toast({ variant: "error", title: t("usage.redeemReset"), message: res.error });
+					return;
+				}
+				const outcome = res.data as RpcResetCreditRedeemResult | undefined;
+				toast({
+					variant: outcome?.ok ? "success" : "warning",
+					title: t("usage.redeemReset"),
+					message: outcome?.message ?? "",
+				});
+				void loadQuotas();
+				void loadResets();
+			} finally {
+				setRedeemingKey(null);
+			}
+		},
+		[tabRpc, t, loadQuotas, loadResets],
+	);
+
+	// Quota reports carry resetCreditsAvailable; the picker opens only when some
+	// provider actually banks resets, so the extra provider calls stay lazy.
+	const resetsAvailable = (reports ?? []).some(report => (report.resetCreditsAvailable ?? 0) > 0);
 
 	// The window is global UI state, so it survives tab switches. Anything from
 	// the previous tab has to leave before the new tab's read lands.
@@ -267,18 +371,65 @@ export function UsageWindow() {
 			<div className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto">
 				<div className="flex items-center justify-between">
 					<span className="text-omp-sm font-semibold text-[var(--omp-muted)]">{t("usage.providerQuotas")}</span>
-					<Button
-						size="sm"
-						variant="ghost"
-						icon={<RefreshCw size={12} />}
-						onClick={() => void loadQuotas()}
-						disabled={!sidecarReady}
-						loading={loading}
-						title={!sidecarReady ? t("usage.notConnected") : t("usage.refresh")}
-					>
-						{t("usage.refresh")}
-					</Button>
+					<div className="flex items-center gap-1">
+						{resetsAvailable && (
+							<Button
+								size="sm"
+								variant={resetsOpen ? "secondary" : "ghost"}
+								icon={<History size={12} />}
+								onClick={() => {
+									const next = !resetsOpen;
+									setResetsOpen(next);
+									if (next && resets === null) void loadResets();
+								}}
+								disabled={!sidecarReady}
+							>
+								{t("usage.redeemReset")}
+							</Button>
+						)}
+						<Button
+							size="sm"
+							variant="ghost"
+							icon={<RefreshCw size={12} />}
+							onClick={() => void loadQuotas()}
+							disabled={!sidecarReady}
+							loading={loading}
+							title={!sidecarReady ? t("usage.notConnected") : t("usage.refresh")}
+						>
+							{t("usage.refresh")}
+						</Button>
+					</div>
 				</div>
+
+				{resetsOpen && resetsAvailable && (
+					<div className="rounded-lg border border-[var(--omp-border-muted)] px-3 py-1.5">
+						{resetsLoading && resets === null ? (
+							<div className="flex items-center justify-center py-3">
+								<Spinner />
+							</div>
+						) : (resets ?? []).length === 0 ? (
+							<span className="block py-2 text-center text-omp-md text-[var(--omp-dim)]">
+								{t("usage.noResets")}
+							</span>
+						) : (
+							<div className="divide-y divide-[var(--omp-border-muted)]">
+								{(resets ?? []).map(account => {
+									const key = `${account.provider}:${account.target.credentialId}`;
+									return (
+										<ResetCreditRow
+											key={key}
+											account={account}
+											t={t}
+											now={now}
+											busy={redeemingKey === key}
+											onRedeem={() => void redeemReset(account)}
+										/>
+									);
+								})}
+							</div>
+						)}
+					</div>
+				)}
 
 				{error && (
 					<div className="rounded-md bg-[var(--omp-tool-error-bg)] px-3 py-2 text-omp-md text-[var(--omp-error)]">

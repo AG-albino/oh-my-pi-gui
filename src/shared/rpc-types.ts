@@ -19,6 +19,7 @@ export type RpcCommand =
 	| { id?: string; type: "drop_session" }
 	| { id?: string; type: "get_state" }
 	| { id?: string; type: "set_fast_mode"; enabled: boolean }
+	| { id?: string; type: "set_slow_mode"; enabled: boolean }
 	| { id?: string; type: "get_available_commands" }
 	| { id?: string; type: "set_todos"; phases: TodoPhase[] }
 	| { id?: string; type: "set_host_tools"; tools: HostToolDefinition[] }
@@ -62,6 +63,10 @@ export type RpcCommand =
 	| { id?: string; type: "branch"; entryId: string }
 	| { id?: string; type: "fork" }
 	| { id?: string; type: "get_branch_messages" }
+	| { id?: string; type: "get_config_warnings" }
+	| { id?: string; type: "get_advisor_status" }
+	| { id?: string; type: "list_reset_credits" }
+	| { id?: string; type: "redeem_reset_credit"; target: RpcResetCreditTarget; label: string }
 	| { id?: string; type: "get_last_assistant_text" }
 	| { id?: string; type: "set_session_name"; name: string; sessionPath?: string }
 	| { id?: string; type: "set_entry_label"; entryId: string; label?: string }
@@ -239,6 +244,8 @@ export type RpcCommand =
 	| { id?: string; type: "live_stop" }
 	| { id?: string; type: "live_mute"; muted?: boolean }
 	| { id?: string; type: "terminal_open"; cols?: number; rows?: number; cwd?: string }
+	| { id?: string; type: "terminal_run_cli"; subcommand: RpcTerminalCliSubcommand; args?: string[] }
+	| { id?: string; type: "tui_open"; surface: RpcTuiSurface }
 	| { id?: string; type: "terminal_input"; terminalId: string; data: string }
 	| { id?: string; type: "terminal_resize"; terminalId: string; cols: number; rows: number }
 	| { id?: string; type: "terminal_close"; terminalId: string }
@@ -589,6 +596,60 @@ export interface RpcDictationStartResult {
 // ============================================================================
 
 /** One sidecar-hosted terminal. */
+/** omp subcommands `terminal_run_cli` launches in a revealed terminal (each brings its own terminal UI). */
+export type RpcTerminalCliSubcommand = "git" | "cleanse";
+
+/** TUI-only screens `tui_open` hosts in a terminal. */
+export type RpcTuiSurface = "advisor_config";
+
+/** `get_advisor_status`: the roster behind the TUI's advisor eye badge, plus advisor spend. */
+export interface RpcAdvisorStatus {
+	/** `advisor.enabled` is on; `advisors` lists the configured roster either way. */
+	configured: boolean;
+	advisors: Array<{
+		name: string;
+		status: "running" | "paused" | "quota_exhausted" | "error" | "no_model";
+		/** Every comment on the yielded primary turn is in; none arrive until the next turn. */
+		yielded: boolean;
+	}>;
+	/** Cumulative advisor cost recorded for this session, in USD. */
+	cost: number;
+	usingSubscription: boolean;
+}
+
+/** A saved-reset option bound to one stored credential; pass back unchanged to `redeem_reset_credit`. */
+export interface RpcResetCreditTarget {
+	provider: string;
+	credentialId: number;
+	creditId?: string;
+	accountId?: string;
+	email?: string;
+	orgId?: string;
+}
+
+/** One provider account row of `list_reset_credits`, active account first. */
+export interface RpcResetCreditAccount {
+	label: string;
+	provider: string;
+	providerLabel: string;
+	/** Banked resets, including grants that cannot be spent right now. */
+	availableCount: number;
+	/** Resets the provider currently permits this account to spend. */
+	redeemableCount: number;
+	target: RpcResetCreditTarget;
+	active: boolean;
+	error?: string;
+	unavailableReason?: string;
+	expiresAt?: string;
+}
+
+/** `redeem_reset_credit`: whether a reset was applied, plus a human-facing summary. */
+export interface RpcResetCreditRedeemResult {
+	ok: boolean;
+	code: string;
+	message: string;
+}
+
 export interface RpcTerminalInfo {
 	terminalId: string;
 	/**
@@ -1377,6 +1438,12 @@ export interface RpcSessionState {
 	sessionName?: string | null;
 	fastModeEnabled: boolean;
 	fastModeActive: boolean;
+	/** `/slow` applies to the active model (flex tier on OpenAI/Google, low priority on Claude subscriptions). */
+	slowModeSupported?: boolean;
+	/** `/slow` is on for the active model; always `false` when `slowModeSupported` is `false`. */
+	slowModeEnabled?: boolean;
+	/** Where the active model's `/slow` lives: `global` (persisted config shared by every session) or `session` (this session only). */
+	slowModeScope?: "session" | "global";
 	tokensPerSecond: number | null;
 	autoCompactionEnabled: boolean;
 	autoRetryEnabled: boolean;
@@ -2316,6 +2383,10 @@ export type AgentSessionEvent =
 	| { type: "retry_fallback_applied"; from: string; to: string; role: string }
 	| { type: "retry_fallback_succeeded"; model: string; role: string }
 	| { type: "model_changed" }
+	// Payload-free: re-read with get_config_warnings / get_advisor_status.
+	| { type: "config_warnings_changed" }
+	| { type: "advisor_cost_changed" }
+	| { type: "advisor_yielded" }
 	| { type: "ttsr_triggered"; rules: unknown[] }
 	| { type: "todo_reminder"; todos: TodoTask[]; attempt: number; maxAttempts: number }
 	| { type: "todo_auto_clear" }

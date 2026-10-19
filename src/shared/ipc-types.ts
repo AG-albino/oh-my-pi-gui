@@ -147,9 +147,13 @@ export const IPC_COMMANDS = {
 	CONVERSATIONS_SEARCH: "conversations:search",
 	/** Fetch stats endpoint */
 	STATS_FETCH: "stats:fetch",
+	/** Stats dashboard base URL (for /trace deep links into the web UI) */
+	STATS_URL: "stats:url",
 	/** Run/cancel an isolated bundled `omp bench --json` process. */
 	BENCH_RUN: "bench:run",
 	BENCH_ABORT: "bench:abort",
+	/** Write a finished window recording (webm) to a user-picked path */
+	RECORDER_SAVE: "recorder:save",
 	/** Open external URL */
 	SYSTEM_INFO: "system:info",
 	SYSTEM_OPEN_EXTERNAL: "system:open-external",
@@ -610,6 +614,12 @@ export interface IpcStatsFetchPayload {
 	params?: Record<string, string>;
 }
 
+export interface IpcStatsUrlResult {
+	url: string | null;
+	/** Server is restarting; the caller may retry shortly. */
+	unavailable?: boolean;
+}
+
 export interface IpcNotifyPayload {
 	title: string;
 	body?: string;
@@ -1058,6 +1068,8 @@ export interface OmpApi {
 		 * shuts the focused window and leaves the rest of the session behind.
 		 */
 		quit(): void;
+		/** Filesystem path of a dropped or picked `File`; empty for in-memory files (e.g. pasted images). */
+		pathForFile(file: File): string;
 	};
 	rpc: {
 		command(cmd: RpcCommand, timeoutMs?: number): Promise<RpcResponse>;
@@ -1153,6 +1165,7 @@ export interface OmpApi {
 		setThinkingLevel(level: ThinkingLevel | "auto"): Promise<RpcResponse>;
 		cycleThinkingLevel(): Promise<RpcResponse>;
 		setFastMode(enabled: boolean): Promise<RpcResponse>;
+		setSlowMode(enabled: boolean): Promise<RpcResponse>;
 		setSteeringMode(mode: "all" | "one-at-a-time"): Promise<RpcResponse>;
 		setFollowUpMode(mode: "all" | "one-at-a-time"): Promise<RpcResponse>;
 		setInterruptMode(mode: "immediate" | "wait"): Promise<RpcResponse>;
@@ -1376,6 +1389,8 @@ export interface OmpApi {
 	};
 	stats: {
 		fetch(path: string, params?: Record<string, string>): Promise<unknown>;
+		/** Base URL of the bundled stats dashboard (null while the server is down). */
+		url(): Promise<IpcStatsUrlResult>;
 	};
 	bench: {
 		run(options: IpcBenchmarkRunOptions): Promise<IpcBenchmarkRunResult>;
@@ -1392,6 +1407,8 @@ export interface OmpApi {
 			options?: { directory?: boolean },
 		): Promise<string[] | null>;
 		clipboardRead(): Promise<string>;
+		/** Write a finished recording blob to the user-picked path. */
+		recorderSave(path: string, data: ArrayBuffer): Promise<{ ok: boolean; error?: string }>;
 		notify(title: string, body?: string): void;
 	};
 	prefs: {

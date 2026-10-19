@@ -2,6 +2,7 @@ import type { VirtualItem } from "@tanstack/react-virtual";
 import { createStore } from "zustand/vanilla";
 import type {
 	ContextUsage,
+	RpcAdvisorStatus,
 	RpcCollabState,
 	RpcLoopModeState,
 	RpcSessionState,
@@ -71,6 +72,12 @@ export interface SessionStore {
 	/** Vibe mode emits no event — hydrated via get_vibe_mode and mirrored when
 	 * the Modes window toggles it. */
 	vibeModeEnabled: boolean;
+	/** Configuration problems the sidecar collected (get_config_warnings); refreshed on config_warnings_changed. */
+	configWarnings: string[];
+	/** The warning set the user dismissed; a changed set shows the banner again. */
+	configWarningsDismissed: string | null;
+	/** Advisor roster + spend (get_advisor_status); null until fetched. */
+	advisorStatus: RpcAdvisorStatus | null;
 	setFromState: (state: RpcSessionState) => void;
 	setStatus: (status: SidecarStatus, cwd: string) => void;
 	reset: () => void;
@@ -104,6 +111,9 @@ const initialState = {
 	goalState: null,
 	loopMode: null,
 	vibeModeEnabled: false,
+	configWarnings: [] as string[],
+	configWarningsDismissed: null as string | null,
+	advisorStatus: null as RpcAdvisorStatus | null,
 };
 
 export const createSessionStore = () =>

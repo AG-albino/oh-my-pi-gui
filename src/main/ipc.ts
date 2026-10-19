@@ -43,6 +43,7 @@ import type {
 	IpcSidecarRestartPayload,
 	IpcSpawnTabPayload,
 	IpcStatsFetchPayload,
+	IpcStatsUrlResult,
 	IpcUpdateLaunchProfilePayload,
 } from "../shared/ipc-types";
 import { IPC_COMMANDS, IPC_EVENTS, type RunProgressState, type TrayState } from "../shared/ipc-types";
@@ -835,6 +836,15 @@ export function registerIpcHandlers(deps: IpcDeps): void {
 		}
 	});
 
+	// The dashboard's base URL (/trace deep-links into its hash routes).
+	ipcMain.handle(IPC_COMMANDS.STATS_URL, (): IpcStatsUrlResult => {
+		if (!statsClient.port) {
+			const revive = deps.statsRestart();
+			return { url: null, unavailable: revive !== "exhausted" };
+		}
+		return { url: `http://127.0.0.1:${statsClient.port}` };
+	});
+
 	ipcMain.handle(
 		IPC_COMMANDS.BENCH_RUN,
 		async (event, options: IpcBenchmarkRunOptions): Promise<IpcBenchmarkRunResult> => {
@@ -934,6 +944,18 @@ export function registerIpcHandlers(deps: IpcDeps): void {
 
 	ipcMain.handle(IPC_COMMANDS.SYSTEM_CLIPBOARD_READ, () => {
 		return clipboard.readText();
+	});
+
+	// /record output: the path comes from the user's own save dialog.
+	ipcMain.handle(IPC_COMMANDS.RECORDER_SAVE, async (_event, payload: { path?: string; data?: ArrayBuffer }) => {
+		if (typeof payload?.path !== "string" || payload.path.length === 0) return { ok: false, error: "No path" };
+		if (!(payload.data instanceof ArrayBuffer)) return { ok: false, error: "No recording data" };
+		try {
+			await fsp.writeFile(payload.path, Buffer.from(payload.data));
+			return { ok: true };
+		} catch (err) {
+			return { ok: false, error: err instanceof Error ? err.message : String(err) };
+		}
 	});
 
 	ipcMain.handle(IPC_COMMANDS.SYSTEM_NOTIFY, (event, payload: IpcNotifyPayload) => {

@@ -13,7 +13,7 @@ import {
 	X,
 	Zap,
 } from "lucide-react";
-import type { ClipboardEvent, KeyboardEvent } from "react";
+import type { ClipboardEvent, DragEvent, KeyboardEvent } from "react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { AvailableCommand, ImageContent } from "../../../shared/rpc-types";
@@ -47,12 +47,19 @@ import { useActiveTabKind, useTabsStore } from "../../stores/tabs";
 import { toast } from "../../stores/toast";
 import { useUiStore } from "../../stores/ui";
 import { ContextMenu, type ContextMenuAnchor } from "../common/ContextMenu";
+import { AdvisorBadge } from "./AdvisorBadge";
 import { ApprovalControl } from "./ApprovalControl";
 import { ComposerModes } from "./ComposerModes";
 import { ContextStrategyBar } from "./ContextStrategyBar";
 import { DictationStrip } from "./DictationStrip";
 import { HistorySearchOverlay } from "./HistorySearchOverlay";
-import { fileToImage, listMentionFiles, mentionFileCache } from "./input-area-utils";
+import {
+	appendMentions,
+	droppedFileMention,
+	fileToImage,
+	listMentionFiles,
+	mentionFileCache,
+} from "./input-area-utils";
 import { ThinkingControl } from "./ThinkingControl";
 import { type CompletionItem, type CompletionMenu, useCompletionMenu } from "./use-completion-menu";
 import { useComposerSubmit } from "./use-composer-submit";
@@ -630,6 +637,38 @@ export function InputArea() {
 		}
 	};
 
+	// Dropping files (TUI parity: a dragged path lands in the editor): images
+	// attach like a paste; anything else becomes an @mention the agent resolves.
+	const [dragActive, setDragActive] = useState(false);
+	const draggingFiles = (e: DragEvent<HTMLDivElement>) => e.dataTransfer.types.includes("Files");
+	const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+		if (!draggingFiles(e) || collabReadOnly) return;
+		e.preventDefault();
+		e.dataTransfer.dropEffect = "copy";
+		if (!dragActive) setDragActive(true);
+	};
+	const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+		if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+		setDragActive(false);
+	};
+	const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+		setDragActive(false);
+		const files = Array.from(e.dataTransfer.files);
+		if (files.length === 0 || collabReadOnly) return;
+		e.preventDefault();
+		const dropped = files.filter(file => file.type.startsWith("image/"));
+		if (dropped.length > 0) {
+			void Promise.all(dropped.map(fileToImage)).then(added => setImages(prev => [...prev, ...added]));
+		}
+		const mentions = files
+			.filter(file => !file.type.startsWith("image/"))
+			.map(file => window.omp.app.pathForFile(file))
+			.filter(filePath => filePath.length > 0)
+			.map(filePath => droppedFileMention(filePath, cwd));
+		if (mentions.length > 0) setText(current => appendMentions(current, mentions));
+		requestAnimationFrame(() => textareaRef.current?.focus());
+	};
+
 	const handlePaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
 		const files = Array.from(e.clipboardData.files).filter(f => f.type.startsWith("image/"));
 		if (files.length > 0) {
@@ -798,8 +837,14 @@ export function InputArea() {
 						/>
 					)}
 					<div
-						className="omp-composer-box overflow-hidden"
+						className={cx(
+							"omp-composer-box overflow-hidden",
+							dragActive && "ring-2 ring-[var(--omp-accent)] ring-offset-0",
+						)}
 						style={modeColor ? { borderColor: modeColor } : undefined}
+						onDragOver={handleDragOver}
+						onDragLeave={handleDragLeave}
+						onDrop={handleDrop}
 					>
 						<div className="px-4 pb-1 pt-3">
 							{submissionUncertain && (
@@ -1045,6 +1090,7 @@ export function InputArea() {
 									</span>
 									<ChevronDown aria-hidden="true" size={13} className="shrink-0 text-[var(--omp-dim)]" />
 								</button>
+								{!isChat && <AdvisorBadge />}
 
 								{compactRunSettings ? (
 									<div className="relative shrink-0">

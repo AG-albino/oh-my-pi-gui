@@ -5,6 +5,8 @@ import {
 	hydrateLegacySession,
 	hydrateSession,
 	hydrateTabSession,
+	refreshAdvisorStatus,
+	refreshConfigWarnings,
 	refreshModelState,
 	refreshSessionState,
 	syncGoal,
@@ -498,10 +500,21 @@ export function useRpcEvents(heartbeatMs = 15_000): void {
 							void refreshModelState(tabId);
 							break;
 						}
+						case "config_warnings_changed": {
+							void refreshConfigWarnings(tabId);
+							break;
+						}
+						case "advisor_cost_changed":
+						case "advisor_yielded": {
+							void refreshAdvisorStatus(tabId);
+							break;
+						}
 						case "notice": {
 							// Suppress routine informational churn from chatty sources — vision/xdev
 							// mount/unmount notices fire on every model switch and need no action,
 							// flooding the toast stack. Warnings/errors and other sources still toast.
+							// The hosted advisor editor reports saves as notices; the roster may have changed.
+							if (event.source === "advisor") void refreshAdvisorStatus(tabId);
 							if (event.level === "info" && event.source && QUIET_NOTICE_SOURCES.has(event.source)) break;
 							useToastStore.getState().push({
 								variant: event.level === "error" ? "error" : event.level === "warning" ? "warning" : "info",

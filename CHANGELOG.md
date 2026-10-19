@@ -6,6 +6,15 @@
 
 - **Russian interface localization**: a third interface language joining English and 中文, chosen from an explicit language picker. Covers all renderer strings, settings schema labels, and native menus/tray; technical terms (MCP, model names, tool ids) stay English per `docs/localization/ru.md`. — thanks [@AG-albino](https://github.com/AG-albino) ([#16](https://github.com/nornzach/oh-my-pi-gui/pull/16))
 - PR CI: a `localization` workflow now runs typecheck, the test suite, and a production build on every pull request. — thanks [@AG-albino](https://github.com/AG-albino) ([#16](https://github.com/nornzach/oh-my-pi-gui/pull/16))
+- **Config warning banner**: problems in `settings.json` that the terminal app shows as a banner now surface in the app too, so a mistyped key or dead credential stops failing silently.
+- **Drag files into the composer**: dropping files on the input area inserts them as `@`-mentions (paths with spaces are quoted).
+- **Edit & resend from a message**: user message bubbles offer an edit action that puts the text back into the composer and forks the session from that point — the terminal's history-edit flow without leaving the window.
+- **Command palette parity**: the palette now covers `/effort`, `/slow`, `/pin`, `/wt`, `/seance`, `/cleanse`, `/trace`, `/open`, `/ratchet`, `/modelpreset`, `/skillful`, `/extended-context` and `/record`, and adds missing MCP / marketplace / advisor / git subcommands. `/git` keeps the diff view and can also open the full terminal git UI; `/advisor configure` opens the shared configuration screen in a terminal overlay.
+- **Window recording**: `/record` captures the window to a WebM video — the desktop counterpart of the terminal's session recording. A REC chip in the title bar stops and saves the take.
+- **Usage reset credits**: the usage window can redeem banked provider resets — the `/usage` reset picker from the terminal.
+- **Advisor badge**: a status eye next to the model chip shows when the advisor is watching (and when it has yielded), with live cost in the title bar.
+- **Dedicated tool cards** for `checkpoint`, `rewind`, `context_notes`, `new_context`, `learn`, `manage_skill`, `security_scan` and `ida` replace the generic key/value dump.
+- Extensions that open their own interactive screens now work in the app: they run in a terminal overlay instead of silently doing nothing.
 
 ## [0.9.22] - 2026-10-17
 

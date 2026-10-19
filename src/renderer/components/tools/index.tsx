@@ -22,6 +22,16 @@ import { HubRenderer } from "./HubRenderer";
 import { ImageRenderer } from "./ImageRenderer";
 import { LspRenderer } from "./LspRenderer";
 import { MemoryRenderer } from "./MemoryRenderer";
+import {
+	CheckpointRenderer,
+	ContextNotesRenderer,
+	IdaRenderer,
+	LearnRenderer,
+	ManageSkillRenderer,
+	NewContextRenderer,
+	RewindRenderer,
+	SecurityScanRenderer,
+} from "./OpsRenderers";
 import { ReadRenderer } from "./ReadRenderer";
 import { ResolveRenderer } from "./ResolveRenderer";
 import { TaskRenderer } from "./TaskRenderer";
@@ -140,6 +150,14 @@ const REGISTRY: Record<string, ComponentType<ToolRendererProps>> = {
 	// A pending reject carries only a reason — the wrapper pins the operation
 	// so the card never renders as "Resolving".
 	reject: (props: ToolRendererProps) => <ResolveRenderer {...props} operation="reject" />,
+	checkpoint: CheckpointRenderer,
+	rewind: RewindRenderer,
+	context_notes: ContextNotesRenderer,
+	new_context: NewContextRenderer,
+	learn: LearnRenderer,
+	manage_skill: ManageSkillRenderer,
+	security_scan: SecurityScanRenderer,
+	ida: IdaRenderer,
 };
 
 export function getToolRenderer(name: string): ComponentType<ToolRendererProps> {

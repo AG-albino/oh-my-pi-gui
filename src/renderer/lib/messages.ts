@@ -5,7 +5,7 @@ import type {
 	RpcSessionTreeNode,
 	RpcSessionTreeResult,
 } from "../../shared/rpc-types";
-import { hydrateSession, resetRetryPending } from "../hooks/use-rpc-events";
+import { hydrateSession, hydrateTabSession, resetRetryPending } from "../hooks/use-rpc-events";
 import { useMessagesStore } from "../stores/messages";
 import { useSessionStore } from "../stores/session";
 import { useTabsStore } from "../stores/tabs";
@@ -134,15 +134,11 @@ export async function forkSessionFromEntryInNewTab(
 	return tabId ? "opened" : "saved";
 }
 
-/** Resolve legacy transcript messages through the active OMP session tree, then fork them. */
-export async function forkSessionFromMessageInNewTab(
+/** Locate a transcript message's entry in the active session tree (legacy rows carry no entryId). */
+async function resolveMessageEntryId(
 	message: AgentMessage,
-	rpc: Pick<TabRpc, "forkFrom" | "getSessionTree"> = window.omp.rpc,
-	sourceTabId = useTabsStore.getState().activeTabId,
-): Promise<"opened" | "saved"> {
-	if (!sourceTabId || useSessionStore.getState().switchPending !== null) {
-		throw new Error("The active session changed while preparing the branch");
-	}
+	rpc: Pick<TabRpc, "getSessionTree">,
+): Promise<string> {
 	let entryId = message.entryId;
 	if (!entryId) {
 		const response = await rpc.getSessionTree();
@@ -172,7 +168,46 @@ export async function forkSessionFromMessageInNewTab(
 		}
 	}
 	if (!entryId) throw new Error("Could not locate this message in the active session tree");
+	return entryId;
+}
+
+/** Resolve legacy transcript messages through the active OMP session tree, then fork them. */
+export async function forkSessionFromMessageInNewTab(
+	message: AgentMessage,
+	rpc: Pick<TabRpc, "forkFrom" | "getSessionTree"> = window.omp.rpc,
+	sourceTabId = useTabsStore.getState().activeTabId,
+): Promise<"opened" | "saved"> {
+	if (!sourceTabId || useSessionStore.getState().switchPending !== null) {
+		throw new Error("The active session changed while preparing the branch");
+	}
+	const entryId = await resolveMessageEntryId(message, rpc);
 	return forkSessionFromEntryInNewTab(entryId, sourceTabId, rpc);
+}
+
+/**
+ * Rewind this session to just before a user message and put its text back in
+ * the composer to edit and resend — the TUI's double-Esc message selector,
+ * reached from the message itself.
+ */
+export async function editFromMessage(
+	message: AgentMessage,
+	rpc: Pick<TabRpc, "getSessionTree" | "branch"> = window.omp.rpc,
+	tabId = useTabsStore.getState().activeTabId,
+): Promise<"branched" | "cancelled"> {
+	if (useSessionStore.getState().switchPending !== null) {
+		throw new Error("The active session changed while preparing the branch");
+	}
+	// The bubble may sit in a split pane that is not the focused tab, so the
+	// branch, the composer fill, and the reload all address its own tab.
+	const response = await rpc.branch(await resolveMessageEntryId(message, rpc));
+	if (!response.success) throw new Error(response.error);
+	const data = response.data as { cancelled?: boolean; text?: string } | undefined;
+	if (data?.cancelled) return "cancelled";
+	if (data?.text !== undefined) {
+		window.dispatchEvent(new CustomEvent("omp:fill-composer", { detail: { text: data.text, tabId } }));
+	}
+	await (tabId ? hydrateTabSession(tabId) : hydrateSession());
+	return "branched";
 }
 
 /** One queued steer/follow-up message pulled back by the dequeue RPC. */

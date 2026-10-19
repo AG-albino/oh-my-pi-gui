@@ -22,6 +22,10 @@ export interface ModelStore {
 	availableThinkingLevels: ThinkingLevel[];
 	fastModeEnabled: boolean;
 	fastModeActive: boolean;
+	/** `/slow` applies to the active model (flex tier on OpenAI/Google, low priority on Claude subscriptions). */
+	slowModeSupported: boolean;
+	slowModeEnabled: boolean;
+	slowModeScope: "session" | "global" | null;
 	tokensPerSecond: number | null;
 	availableModels: ModelInfo[];
 	/** Configured providers with auth state and model counts, from the same
@@ -65,6 +69,9 @@ const initialState = {
 	availableThinkingLevels: [] as ThinkingLevel[],
 	fastModeEnabled: false,
 	fastModeActive: false,
+	slowModeSupported: false,
+	slowModeEnabled: false,
+	slowModeScope: null as "session" | "global" | null,
 	tokensPerSecond: null as number | null,
 	availableModels: [] as ModelInfo[],
 	providers: [] as ProviderInfo[],
@@ -116,6 +123,9 @@ export const createModelStore = (command: TabCommand = activeTabCommand) =>
 					availableThinkingLevels: state.availableThinkingLevels ?? [],
 					fastModeEnabled: state.fastModeEnabled,
 					fastModeActive: state.fastModeActive,
+					slowModeSupported: state.slowModeSupported ?? false,
+					slowModeEnabled: state.slowModeEnabled ?? false,
+					slowModeScope: state.slowModeScope ?? null,
 					tokensPerSecond: state.tokensPerSecond,
 				}),
 			/** Both catalog reads describe the same generation axis, so they commit

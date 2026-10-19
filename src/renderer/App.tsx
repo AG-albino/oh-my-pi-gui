@@ -37,6 +37,7 @@ import { WorktreeDialog } from "./components/dialogs/WorktreeDialog";
 import { PanelContainer } from "./components/layout/PanelContainer";
 import { Sidebar } from "./components/layout/Sidebar";
 import { SidecarBanner } from "./components/layout/SidecarBanner";
+import { ConfigWarningsBanner } from "./components/layout/ConfigWarningsBanner";
 import { SplitWorkspace } from "./components/layout/SplitWorkspace";
 import { TabBar } from "./components/layout/TabBar";
 import { TitleBar } from "./components/layout/TitleBar";
@@ -772,6 +773,7 @@ export function App() {
 				<TitleBar />
 				<TabBar />
 				<SidecarBanner />
+				<ConfigWarningsBanner />
 				<UpdateBanner />
 				<SplitWorkspace />
 			</main>

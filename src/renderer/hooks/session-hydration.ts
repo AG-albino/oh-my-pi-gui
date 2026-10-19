@@ -2,6 +2,7 @@ import { createSessionRpcClient } from "../../shared/rpc-client";
 import type {
 	AgentMessage,
 	ModelInfo,
+	RpcAdvisorStatus,
 	RpcGoalState,
 	RpcLoopModeState,
 	RpcResponse,
@@ -127,6 +128,39 @@ export async function refreshModelState(tabId = useTabsStore.getState().activeTa
 	} catch {
 		// Transient — the next hydration retries.
 	}
+}
+
+/** Re-read a payload-free sidecar snapshot into one tab's session store, dropping replies for a replaced runtime. */
+async function refreshSidecarSnapshot(
+	tabId: string | null,
+	command: "get_config_warnings" | "get_advisor_status",
+	apply: (data: unknown) => Partial<SessionStore>,
+): Promise<void> {
+	if (!tabId) return;
+	const runtime = isTabClosed(tabId) ? sessionRuntime(tabId) : ensureTabRuntime(tabId);
+	if (!runtime) return;
+	try {
+		const res = await runtime.command({ type: command });
+		if (sessionRuntime(tabId) !== runtime || !res.success) return;
+		withSessionRuntime(tabId, () => useSessionStore.setState(apply(res.data)));
+	} catch {
+		// Transient — the next event or hydration retries.
+	}
+}
+
+/** Re-read the sidecar's collected configuration warnings (config_warnings_changed carries none). */
+export function refreshConfigWarnings(tabId = useTabsStore.getState().activeTabId): Promise<void> {
+	return refreshSidecarSnapshot(tabId, "get_config_warnings", data => {
+		const warnings = (data as { warnings?: unknown } | undefined)?.warnings;
+		return { configWarnings: Array.isArray(warnings) ? warnings.filter(w => typeof w === "string") : [] };
+	});
+}
+
+/** Re-read advisor roster status and spend (advisor_* events carry none). */
+export function refreshAdvisorStatus(tabId = useTabsStore.getState().activeTabId): Promise<void> {
+	return refreshSidecarSnapshot(tabId, "get_advisor_status", data => ({
+		advisorStatus: (data as RpcAdvisorStatus | undefined) ?? null,
+	}));
 }
 
 function asModelInfo(value: unknown): ModelInfo | undefined {
@@ -322,6 +356,10 @@ export async function hydrateTabSession(tabId: string, fallbackName?: string): P
 		// afterwards; vibe emits nothing, so the Modes window mirrors toggles.
 		syncLoopMode(tabId, runtime.command, isCurrent),
 		syncVibeMode(tabId, runtime.command, isCurrent),
+		// Neither has a payload-bearing event: config_warnings_changed and the
+		// advisor_* frames only announce a change, so hydrate reads both.
+		refreshConfigWarnings(tabId),
+		refreshAdvisorStatus(tabId),
 		// Queue snapshot: queue_update frames keep it fresh afterwards;
 		// get_queue is only the hydrate fallback (boot/reconnect/session
 		// switch all land here). refresh() swallows its own failures.

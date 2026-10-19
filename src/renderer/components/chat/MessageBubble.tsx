@@ -1,4 +1,4 @@
-import { Archive, Bot, Check, CircleAlert, Copy, FileText, GitBranch, RotateCw, Terminal } from "lucide-react";
+import { Archive, Bot, Check, CircleAlert, Copy, FileText, GitBranch, Pencil, RotateCw, Terminal } from "lucide-react";
 import type { ReactNode } from "react";
 import { memo, useState } from "react";
 import type { AgentMessage, ImageContent, MessageContent, ToolCallContent } from "../../../shared/rpc-types";
@@ -6,7 +6,7 @@ import { AnsiText, hasAnsi } from "../../lib/ansi";
 import { copyText, cx, formatClock, formatTokens } from "../../lib/format";
 import { useT } from "../../lib/i18n";
 import { MarkdownRenderer } from "../../lib/markdown";
-import { forkSessionFromMessageInNewTab, isRenderableMessageText } from "../../lib/messages";
+import { editFromMessage, forkSessionFromMessageInNewTab, isRenderableMessageText } from "../../lib/messages";
 import { extractModelMentions, type ModelMentionChip } from "../../lib/model-mentions";
 import { PREVIEW_SCROLL_LG } from "../../lib/preview";
 import { useTabRpc } from "../../lib/tab-rpc";
@@ -308,6 +308,7 @@ export const MessageBubble = memo(function MessageBubble({
 	const [copied, setCopied] = useState(false);
 	const [branching, setBranching] = useState(false);
 	const switchPending = useSessionStore(state => state.switchPending !== null);
+	const isStreaming = useSessionStore(state => state.isStreaming);
 	if (message.role === "bashExecution" || message.role === "pythonExecution") {
 		return <ExecutionBubble message={message} />;
 	}
@@ -372,6 +373,19 @@ export const MessageBubble = memo(function MessageBubble({
 			if (result === "saved") toast({ variant: "warning", message: t("chat.branchSaved") });
 		} catch (cause) {
 			toast({ variant: "error", title: t("sessionTree.forkFailed"), message: String(cause) });
+		} finally {
+			setBranching(false);
+		}
+	};
+
+	const handleEdit = async () => {
+		if (branching || switchPending) return;
+		setBranching(true);
+		try {
+			const result = await editFromMessage(message, rpc, tabId);
+			if (result === "cancelled") toast({ variant: "info", message: t("branchPicker.cancelled") });
+		} catch (cause) {
+			toast({ variant: "error", title: t("branchPicker.failed"), message: String(cause) });
 		} finally {
 			setBranching(false);
 		}
@@ -443,6 +457,18 @@ export const MessageBubble = memo(function MessageBubble({
 						>
 							{copied ? <Check size={13} className="text-[var(--omp-success)]" /> : <Copy size={13} />}
 						</button>
+						{!isSteering && (
+							<button
+								type="button"
+								onClick={() => void handleEdit()}
+								disabled={branching || switchPending || isStreaming}
+								aria-label={t("chat.editFromHere")}
+								title={t(isStreaming ? "chat.editFromHereBusy" : "chat.editFromHere")}
+								className="omp-pressable flex h-7 w-7 items-center justify-center rounded-md text-[var(--omp-dim)] hover:bg-[var(--omp-selected-bg)] hover:text-[var(--omp-text)] disabled:cursor-not-allowed disabled:opacity-50"
+							>
+								<Pencil size={13} />
+							</button>
+						)}
 						<button
 							type="button"
 							onClick={() => void handleBranch()}

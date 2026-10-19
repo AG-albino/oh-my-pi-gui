@@ -95,3 +95,22 @@ export function fileToImage(file: File): Promise<ComposerImage> {
 	reader.readAsDataURL(file);
 	return promise;
 }
+
+/**
+ * Composer mention for a dropped file: workspace-relative when the file sits
+ * under `cwd`, absolute otherwise, quoted when it contains whitespace (the
+ * agent's mention grammar accepts `@"…"`).
+ */
+export function droppedFileMention(filePath: string, cwd: string): string {
+	const normalized = filePath.replace(/\\/g, "/");
+	const root = cwd.replace(/\\/g, "/").replace(/\/+$/, "");
+	const relative = root && normalized.startsWith(`${root}/`) ? normalized.slice(root.length + 1) : filePath;
+	return /\s/.test(relative) ? `@"${relative}"` : `@${relative}`;
+}
+
+/** Append mentions to a draft, keeping one space between the draft and each mention. */
+export function appendMentions(draft: string, mentions: string[]): string {
+	if (mentions.length === 0) return draft;
+	const separator = draft && !/\s$/.test(draft) ? " " : "";
+	return `${draft}${separator}${mentions.join(" ")} `;
+}

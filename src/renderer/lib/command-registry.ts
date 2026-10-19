@@ -23,13 +23,21 @@ import { createTabRpc } from "./tab-rpc";
  */
 
 import type { SessionKind } from "../../shared/ipc-types";
-import type { AvailableCommand, CopyTarget, RpcResponse } from "../../shared/rpc-types";
+import type {
+	AvailableCommand,
+	CopyTarget,
+	RpcResponse,
+	RpcTerminalCliSubcommand,
+	RpcTuiSurface,
+} from "../../shared/rpc-types";
 import { hydrateSession, hydrateTabSession } from "../hooks/use-rpc-events";
 import { newSessionNow } from "../hooks/use-session-switch";
 import { openHandoffDialog } from "../stores/fork-handoff";
+import { useMessagesStore } from "../stores/messages";
 import { useModelStore } from "../stores/model";
 import { type SessionStore, useSessionStore } from "../stores/session";
 import { useSettingsStore } from "../stores/settings";
+import { useSidebarPrefs } from "../stores/sidebar-prefs";
 import { activeTabKind, useTabsStore } from "../stores/tabs";
 import { toast } from "../stores/toast";
 import { useTodoStore } from "../stores/todo";
@@ -39,12 +47,15 @@ import { isCommandAvailable } from "./command-availability";
 import { exportSessionHtml } from "./export-session";
 import { copyText } from "./format";
 import { translate } from "./i18n";
-import { clearSessionContext, retryLastTurn as retryLastTurnShared } from "./messages";
+import { clearSessionContext, messageText, retryLastTurn as retryLastTurnShared } from "./messages";
+import { openLink } from "./open-link";
 import {
 	capturePluginActivationOrigin,
 	handlePluginActivation,
 	isPluginActivationOriginActive,
 } from "./plugin-activation";
+import { isRecording, startRecording, stopRecording } from "./recording";
+import { findTextLinks } from "./terminal-links";
 import { copyTodosToClipboard, dumpTranscriptToClipboard, exportTodos, importTodosFromFile } from "./transcript-copy";
 import { addWorkspaceDirectory, moveSessionTo, pickWorkspaceDirectory } from "./workspace-dirs";
 
@@ -171,6 +182,22 @@ export interface CommandRegistryContext {
 
 /** Helper to build a prompt affordance. */
 const p = (text: string, argUsage?: string): CommandAffordance => ({ kind: "prompt", text, argUsage });
+
+/** [label](href) links in assistant text; bare URLs come from findTextLinks. */
+const MARKDOWN_LINK_RE = /\[[^\]\n]*\]\(\s*(https?:\/\/[^)\s"']+)/g;
+
+/** Last web link in a message's text, whichever kind sits furthest right. */
+function lastMessageLink(text: string): string | null {
+	let best: { index: number; url: string } | null = null;
+	for (const match of text.matchAll(MARKDOWN_LINK_RE)) {
+		const url = match[1];
+		if (url) best = { index: match.index, url };
+	}
+	for (const link of findTextLinks(text)) {
+		if (!best || link.start > best.index) best = { index: link.start, url: link.url };
+	}
+	return best?.url ?? null;
+}
 
 /**
  * Locale key stem for a command name: hyphens camelCase, spaces become dots
@@ -310,6 +337,65 @@ export function buildCommandMenu(ctx: CommandRegistryContext): CommandMenuItem[]
 			return;
 		}
 		toast({ variant: "success", message: t(enabled ? "advisor.enabled" : "advisor.disabled") });
+	};
+
+	/** Launch an omp CLI surface (`omp git`, `omp cleanse`) in a revealed terminal of this tab. */
+	const runCliInTerminal = async (subcommand: RpcTerminalCliSubcommand): Promise<void> => {
+		const res = await boundRpc.command({ type: "terminal_run_cli", subcommand });
+		if (!res.success) throw new Error(res.error);
+	};
+
+	/** Host a TUI-only screen (advisor configuration) in a revealed terminal overlay. */
+	const openTuiSurface = async (surface: RpcTuiSurface): Promise<void> => {
+		const res = await boundRpc.command({ type: "tui_open", surface });
+		if (!res.success) throw new Error(res.error);
+	};
+
+	/** /pin: the sidebar pin — local prefs plus the sidecar's resume-list sync. */
+	const pinCurrentSession = async (pinned: boolean): Promise<void> => {
+		const { sessionId, sessionFile } = useSessionStore.getState();
+		if (!sessionId || !sessionFile) {
+			toast({ variant: "info", message: t("cmd.pin.noFile") });
+			return;
+		}
+		if (useSidebarPrefs.getState().pinnedSessions.includes(sessionFile) !== pinned) {
+			await useSidebarPrefs.getState().toggleSessionPin(sessionFile);
+		}
+		const res = await boundRpc.setSessionPinned(sessionId, pinned);
+		if (!res.success) toast({ variant: "warning", message: t("sidebar.pinSyncFailed") });
+	};
+
+	/** /open: last link in the newest assistant message (TUI extractLastLink parity). */
+	const openLastLink = (): void => {
+		const { messages } = useMessagesStore.getState();
+		for (let index = messages.length - 1; index >= 0; index--) {
+			const message = messages[index];
+			if (message?.role !== "assistant") continue;
+			const url = lastMessageLink(messageText(message));
+			if (url) {
+				openLink(url);
+				return;
+			}
+		}
+		toast({ variant: "info", message: t("cmd.open.none") });
+	};
+
+	/** /trace: this session's trace page in the bundled stats dashboard. */
+	const openSessionTrace = async (): Promise<void> => {
+		const { sessionFile } = useSessionStore.getState();
+		if (!sessionFile) {
+			toast({ variant: "info", message: t("cmd.trace.noSession") });
+			return;
+		}
+		const stats = await window.omp.stats.url();
+		if (!stats.url) {
+			toast({
+				variant: stats.unavailable ? "info" : "warning",
+				message: t(stats.unavailable ? "cmd.trace.notReady" : "cmd.trace.unavailable"),
+			});
+			return;
+		}
+		openLink(`${stats.url}/#/traces?s=${encodeURIComponent(sessionFile)}`);
 	};
 
 	/** /mcp enable|disable|remove|reconnect <name>; a bare invocation opens the native MCP tab. */
@@ -506,11 +592,33 @@ export function buildCommandMenu(ctx: CommandRegistryContext): CommandMenuItem[]
 		},
 	});
 	add({
+		name: "seance",
+		label: t("cmd.seance"),
+		description: t("cmd.seance.desc"),
+		category: "session",
+		affordance: p("/seance ", "<session id|path> [--model <selector>]"),
+	});
+	add({
 		name: "rename",
 		label: t("cmd.rename"),
 		description: t("cmd.rename.desc"),
 		category: "session",
 		affordance: { kind: "picker", open: ctx.openRenameDialog },
+	});
+	// /pin: the sidebar pin, mirrored to the sidecar's resume list.
+	add({
+		name: "pin",
+		label: t("cmd.pin"),
+		description: t("cmd.pin.desc"),
+		category: "session",
+		affordance: {
+			kind: "toggle",
+			get: () => {
+				const file = useSessionStore.getState().sessionFile;
+				return file !== null && useSidebarPrefs.getState().pinnedSessions.includes(file);
+			},
+			set: pinned => pinCurrentSession(pinned),
+		},
 	});
 	add({
 		name: "handoff",
@@ -653,6 +761,15 @@ export function buildCommandMenu(ctx: CommandRegistryContext): CommandMenuItem[]
 		shortcut: "⇧Tab",
 		affordance: { kind: "action", run: () => ctx.rpc.cycleThinkingLevel() },
 	});
+	// /effort <level>: prefill hands off to the composer's slash-arg completion,
+	// which lists only the levels the active model supports.
+	add({
+		name: "effort",
+		label: t("cmd.effort"),
+		description: t("cmd.effort.desc"),
+		category: "model",
+		affordance: p("/effort ", "[level]"),
+	});
 	add({
 		name: "fast",
 		label: t("cmd.fast"),
@@ -665,6 +782,21 @@ export function buildCommandMenu(ctx: CommandRegistryContext): CommandMenuItem[]
 				runSessionCommand(ctx.rpc.setFastMode(e), "Fast mode", data => {
 					const d = data as { enabled?: boolean; active?: boolean } | undefined;
 					useModelStore.setState({ fastModeEnabled: d?.enabled ?? e, fastModeActive: d?.active ?? false });
+				}),
+		},
+	});
+	add({
+		name: "slow",
+		label: t("cmd.slow"),
+		description: t("cmd.slow.desc"),
+		category: "model",
+		affordance: {
+			kind: "toggle",
+			get: () => useModelStore.getState().slowModeEnabled,
+			set: e =>
+				runSessionCommand(boundRpc.setSlowMode(e), t("cmd.slow"), data => {
+					const d = data as { enabled?: boolean } | undefined;
+					useModelStore.setState({ slowModeEnabled: d?.enabled ?? e });
 				}),
 		},
 	});
@@ -693,9 +825,29 @@ export function buildCommandMenu(ctx: CommandRegistryContext): CommandMenuItem[]
 			items: [
 				subAction("advisor on", () => setAdvisor(true)),
 				subAction("advisor off", () => setAdvisor(false)),
+				// The TUI advisor-config overlay hosted in a terminal (rpc tui_open) —
+				// chat tabs hide the terminal panel, so the surface has nowhere to show.
+				...(ctx.tabKind === "chat" ? [] : [subAction("advisor configure", () => openTuiSurface("advisor_config"))]),
 				// Text reports stay forwarded until a structured RPC exists (contract).
 				sub("advisor status", "/advisor status"),
 				sub("advisor dump", "/advisor dump"),
+			],
+		},
+	});
+	// /modelpreset: preset save/switch/delete go through the sidecar's text
+	// handler (list prints into the transcript); arg rows prefill the composer.
+	add({
+		name: "modelpreset",
+		label: t("cmd.modelpreset"),
+		description: t("cmd.modelpreset.desc"),
+		category: "model",
+		affordance: {
+			kind: "submenu",
+			items: [
+				sub("modelpreset list", "/modelpreset list"),
+				sub("modelpreset save", "/modelpreset save ", "<name>"),
+				sub("modelpreset switch", "/modelpreset switch ", "<name>"),
+				sub("modelpreset delete", "/modelpreset delete ", "<name>"),
 			],
 		},
 	});
@@ -816,6 +968,23 @@ export function buildCommandMenu(ctx: CommandRegistryContext): CommandMenuItem[]
 		category: "context",
 		affordance: { kind: "action", run: () => freshGuarded() },
 	});
+	// Session-scoped text toggles: bare invocation flips and the sidecar prints
+	// the resulting state into the transcript (status also readable via
+	// `/skillful status`, `/extended-context status`).
+	add({
+		name: "skillful",
+		label: t("cmd.skillful"),
+		description: t("cmd.skillful.desc"),
+		category: "context",
+		affordance: p("/skillful"),
+	});
+	add({
+		name: "extended-context",
+		label: t("cmd.extendedContext"),
+		description: t("cmd.extendedContext.desc"),
+		category: "context",
+		affordance: p("/extended-context"),
+	});
 
 	// ═══════════════════════════════════════════════════════════════════
 	// TOOLS
@@ -892,6 +1061,15 @@ export function buildCommandMenu(ctx: CommandRegistryContext): CommandMenuItem[]
 				subAction("todo import", () => importTodosFromFile()),
 			],
 		},
+	});
+	// /cleanse: the parallel-fix diagnostic runner is a full-screen TUI flow —
+	// the bundled `omp cleanse` runs it inside a revealed terminal.
+	add({
+		name: "cleanse",
+		label: t("cmd.cleanse"),
+		description: t("cmd.cleanse.desc"),
+		category: "tools",
+		affordance: { kind: "action", run: () => runCliInTerminal("cleanse") },
 	});
 
 	// ═══════════════════════════════════════════════════════════════════
@@ -1248,7 +1426,37 @@ export function buildCommandMenu(ctx: CommandRegistryContext): CommandMenuItem[]
 		label: t("cmd.git"),
 		description: t("cmd.git.desc"),
 		category: "workspace",
-		affordance: { kind: "window", open: () => useUiStore.getState().setPanelTab("diff") },
+		affordance: {
+			kind: "submenu",
+			items: [
+				{
+					name: "git panel",
+					label: t("cmd.git.panel"),
+					description: t("cmd.git.panel.desc"),
+					category: "workspace",
+					affordance: { kind: "window", open: () => useUiStore.getState().setPanelTab("diff") },
+				},
+				// The real `/git`: staging + commit composer — the bundled `omp git`
+				// runs the full TUI in a revealed terminal.
+				{
+					name: "git tui",
+					label: t("cmd.git.tui"),
+					description: t("cmd.git.tui.desc"),
+					category: "workspace",
+					affordance: { kind: "action", run: () => runCliInTerminal("git") },
+				},
+			],
+		},
+	});
+	// /wt relocates this session into a fresh worktree (optional branch arg);
+	// the sidecar's text handler prints the outcome summary.
+	add({
+		name: "wt",
+		label: t("cmd.wt"),
+		description: t("cmd.wt.desc"),
+		category: "workspace",
+		aliases: ["worktree"],
+		affordance: p("/wt ", "[<branch>]"),
 	});
 
 	// ═══════════════════════════════════════════════════════════════════
@@ -1275,6 +1483,14 @@ export function buildCommandMenu(ctx: CommandRegistryContext): CommandMenuItem[]
 		description: t("cmd.stats.desc"),
 		category: "view",
 		affordance: { kind: "window", open: ctx.openStatsDashboard },
+	});
+	// /trace: this session's trace route in the bundled stats web dashboard.
+	add({
+		name: "trace",
+		label: t("cmd.trace"),
+		description: t("cmd.trace.desc"),
+		category: "view",
+		affordance: { kind: "action", run: () => openSessionTrace() },
 	});
 	add({
 		name: "feedback",
@@ -1303,6 +1519,14 @@ export function buildCommandMenu(ctx: CommandRegistryContext): CommandMenuItem[]
 		description: t("cmd.copy.desc"),
 		category: "view",
 		affordance: { kind: "action", run: args => copyFromChat(args) },
+	});
+	// /open: last link from the newest assistant message into the panel browser.
+	add({
+		name: "open",
+		label: t("cmd.open"),
+		description: t("cmd.open.desc"),
+		category: "view",
+		affordance: { kind: "action", run: () => openLastLink() },
 	});
 	add({
 		name: "hotkeys",
@@ -1400,6 +1624,28 @@ export function buildCommandMenu(ctx: CommandRegistryContext): CommandMenuItem[]
 		description: t("cmd.omfg.desc"),
 		category: "other",
 		affordance: { kind: "action", argUsage: "<complaint>", run: complaint => forgeTtsrRule(complaint) },
+	});
+	// /ratchet: arms the eval hillclimb and kicks it off as a hidden developer
+	// message; the composer prefill carries the optional "[flow and goal]" arg.
+	add({
+		name: "ratchet",
+		label: t("cmd.ratchet"),
+		description: t("cmd.ratchet.desc"),
+		category: "other",
+		affordance: p("/ratchet ", "[flow and goal]"),
+	});
+	// /record: window capture to a WebM file (the TUI records terminal frames;
+	// the GUI records the window the command ran from).
+	add({
+		name: "record",
+		label: t("cmd.record"),
+		description: t("cmd.record.desc"),
+		category: "other",
+		affordance: {
+			kind: "toggle",
+			get: () => isRecording(),
+			set: on => (on ? startRecording() : stopRecording()),
+		},
 	});
 	add({
 		name: "debug",

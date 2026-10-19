@@ -6,7 +6,7 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { app, BrowserWindow, globalShortcut, nativeImage, session } from "electron";
+import { app, BrowserWindow, desktopCapturer, globalShortcut, nativeImage, session, webContents } from "electron";
 import Store from "electron-store";
 import { nativeAccelerator } from "../shared/hotkeys";
 import type { SessionKind } from "../shared/ipc-types";
@@ -458,6 +458,19 @@ app.whenReady().then(() => {
 	sessionIndex.start();
 	logWatcher.start();
 	memoryWatcher.start();
+	// /record: renderer getDisplayMedia resolves to the window that asked, so a
+	// recording always captures the window the user is looking at (no picker).
+	session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+		void desktopCapturer.getSources({ types: ["window"] }).then(
+			sources => {
+				const contents = request.frame ? webContents.fromFrame(request.frame) : null;
+				const owner = contents ? BrowserWindow.fromWebContents(contents) : null;
+				const source = sources.find(entry => entry.name === owner?.getTitle()) ?? sources[0];
+				callback(source ? { video: source } : {});
+			},
+			() => callback({}),
+		);
+	});
 	// Read sessions into the search index in the background; searches top it up.
 	conversationIndex
 		?.refresh()

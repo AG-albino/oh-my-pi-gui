@@ -3,7 +3,7 @@
  * All RPC commands delegate to ipcRenderer.invoke(IPC_COMMANDS.RPC_COMMAND, ...).
  * Event subscriptions return unsubscribe functions.
  */
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 import type {
 	ConversationSearchResponse,
 	CustomProviderInput,
@@ -31,6 +31,7 @@ import type {
 	IpcSidecarStatusPayload,
 	IpcSpawnTabPayload,
 	IpcSpawnTabResult,
+	IpcStatsUrlResult,
 	IpcTabInfo,
 	IpcTabStatusPayload,
 	IpcTerminalFramePayload,
@@ -125,6 +126,7 @@ const api: OmpApi = {
 	// to learn from the outcome.
 	app: {
 		quit: () => ipcRenderer.send(IPC_COMMANDS.APP_QUIT),
+		pathForFile: (file: File) => webUtils.getPathForFile(file),
 	},
 
 	rpc: {
@@ -298,6 +300,7 @@ const api: OmpApi = {
 	stats: {
 		fetch: (path: string, params?: Record<string, string>) =>
 			ipcRenderer.invoke(IPC_COMMANDS.STATS_FETCH, { path, params }),
+		url: () => ipcRenderer.invoke(IPC_COMMANDS.STATS_URL) as Promise<IpcStatsUrlResult>,
 	},
 
 	bench: {
@@ -315,6 +318,8 @@ const api: OmpApi = {
 		showOpenDialog: (filters?: { name: string; extensions: string[] }[], options?: { directory?: boolean }) =>
 			ipcRenderer.invoke(IPC_COMMANDS.SYSTEM_OPEN_DIALOG, filters, options),
 		clipboardRead: () => ipcRenderer.invoke(IPC_COMMANDS.SYSTEM_CLIPBOARD_READ),
+		recorderSave: (path: string, data: ArrayBuffer) =>
+			ipcRenderer.invoke(IPC_COMMANDS.RECORDER_SAVE, { path, data }) as Promise<{ ok: boolean; error?: string }>,
 		notify: (title: string, body?: string) => {
 			ipcRenderer.invoke(IPC_COMMANDS.SYSTEM_NOTIFY, { title, body });
 		},

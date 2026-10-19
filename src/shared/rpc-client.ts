@@ -39,6 +39,9 @@ const RPC_COMMAND_TIMEOUTS: Record<string, number> = {
 	get_transcript: 30_000,
 	get_messages: 30_000,
 	get_transcript_page: 30_000,
+	// Both reach the provider's reset-credit API.
+	list_reset_credits: 60_000,
+	redeem_reset_credit: 60_000,
 };
 
 export function timeoutForCommand(cmd: RpcCommand): number | undefined {
@@ -197,6 +200,7 @@ export function createSessionRpcClient(transport: RpcTransport): SessionRpcClien
 		setThinkingLevel: (level: ThinkingLevel | "auto") => rpcCommand({ type: "set_thinking_level", level }),
 		cycleThinkingLevel: () => rpcCommand({ type: "cycle_thinking_level" }),
 		setFastMode: (enabled: boolean) => rpcCommand({ type: "set_fast_mode", enabled }),
+		setSlowMode: (enabled: boolean) => rpcCommand({ type: "set_slow_mode", enabled }),
 		setSteeringMode: (mode: "all" | "one-at-a-time") => rpcCommand({ type: "set_steering_mode", mode }),
 		setFollowUpMode: (mode: "all" | "one-at-a-time") => rpcCommand({ type: "set_follow_up_mode", mode }),
 		setInterruptMode: (mode: "immediate" | "wait") => rpcCommand({ type: "set_interrupt_mode", mode }),

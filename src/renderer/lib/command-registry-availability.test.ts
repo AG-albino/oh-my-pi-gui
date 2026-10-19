@@ -87,7 +87,10 @@ describe("native rows vs sidecar-advertised duplicates", () => {
 
 	it("exposes repository changes through the native git row", () => {
 		seedTab("agent");
-		expect(menuItem("git").affordance.kind).toBe("window");
+		const git = menuItem("git").affordance;
+		if (git.kind !== "submenu") throw new Error("git row is no longer a submenu");
+		const panel = git.items.find(item => item.name === "git panel");
+		expect(panel?.affordance.kind).toBe("window");
 
 		seedTab("chat");
 		const affordance = menuItem("git").affordance;

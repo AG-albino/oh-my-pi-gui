@@ -23,6 +23,12 @@ export const CHAT_DEAD_COMMANDS: ReadonlySet<string> = new Set([
 	"security",
 	"tree",
 	"git",
+	// Chat tabs hide the terminal panel, so a CLI surface opened there would
+	// spawn a process with no way to see or drive it.
+	"cleanse",
+	// /seance launches a task agent against the saved transcript — tool-free
+	// chat sessions cannot run it.
+	"seance",
 ]);
 
 /** Whether `name` can run in a tab of this kind. */

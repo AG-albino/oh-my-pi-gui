@@ -13,7 +13,7 @@ import {
 	Share2,
 	Wrench,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { SessionStats } from "../../../shared/rpc-types";
 import { useSessionList } from "../../hooks/use-session-list";
 import { useWorkingTreeChangeCount } from "../../hooks/use-working-tree-changes";
@@ -21,6 +21,7 @@ import { basename, cx, formatCost, formatDuration, formatPercent, formatTokens }
 import { useT } from "../../lib/i18n";
 import { isImeKeyEvent } from "../../lib/ime";
 import { onEscape } from "../../lib/keymap";
+import { isRecording, subscribeRecording, toggleRecording } from "../../lib/recording";
 import { sessionDisplayTitle } from "../../lib/session-title";
 import { useTabRpc } from "../../lib/tab-rpc";
 import { useMessagesStore } from "../../stores/messages";
@@ -47,6 +48,8 @@ export function TitleBar() {
 	const cwd = useSessionStore(s => s.cwd);
 	const status = useSessionStore(s => s.status);
 	const isStreaming = useSessionStore(s => s.isStreaming);
+	const advisorStatus = useSessionStore(s => s.advisorStatus);
+	const recording = useSyncExternalStore(subscribeRecording, isRecording);
 	const isCompacting = useSessionStore(s => s.isCompacting);
 	const statsPulse = useSessionStore(s => s.statsPulse);
 	const isChat = useActiveTabKind() === "chat";
@@ -151,6 +154,7 @@ export function TitleBar() {
 	});
 
 	const usedCost = visibleStats ? (visibleStats.history?.cost ?? visibleStats.cost) : 0;
+	const advisorCost = advisorStatus?.cost ?? 0;
 	const metricParts = [
 		usedTokens > 0 ? t("titlebar.metric.tokensShort", { count: formatTokens(usedTokens) }) : null,
 		usedCost > 0 ? formatCost(usedCost, usedCost < 1 ? 3 : 2) : null,
@@ -159,9 +163,12 @@ export function TitleBar() {
 	const metricsTitle = [
 		`${t(visibleStats?.history ? "titlebar.metric.historyTokens" : "titlebar.metric.tokens")}: ${visibleStats ? formatTokens(usedTokens) : "—"}`,
 		`${t(visibleStats?.history ? "titlebar.metric.historyCost" : "titlebar.metric.cost")}: ${visibleStats ? formatCost(usedCost, 4) : "—"}`,
+		advisorCost > 0 ? `${t("advisor.badge.cost")}: ${formatCost(advisorCost, 4)}` : null,
 		`${t("titlebar.metric.cacheHit")}: ${formatPercent(cacheHit, 0)}`,
 		`${t("titlebar.metric.duration")}: ${formatDuration(executionDuration)}`,
-	].join("\n");
+	]
+		.filter((line): line is string => line !== null)
+		.join("\n");
 	const changeCount = useWorkingTreeChangeCount(!isChat);
 	const reviewLabel =
 		changeCount && changeCount > 0
@@ -400,6 +407,18 @@ export function TitleBar() {
 				>
 					{t("titlebar.plan")}
 				</span>
+			)}
+
+			{recording && (
+				<button
+					type="button"
+					className="no-drag flex shrink-0 cursor-pointer items-center gap-1 rounded-full border border-[var(--omp-error)] px-2 py-1 text-omp-xs font-semibold text-[var(--omp-error)]"
+					title={t("record.stopHint")}
+					onClick={() => void toggleRecording()}
+				>
+					<span className="omp-rec-dot inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--omp-error)]" />
+					{t("record.badge")}
+				</button>
 			)}
 
 			<div className="flex-1" />
